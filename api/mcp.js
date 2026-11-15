@@ -77,6 +77,8 @@ const DATE = /^\d{4}-\d{2}-\d{2}$/, TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
 const iso = () => new Date().toISOString();
 const pri = (p) => (Number.isInteger(p) && p >= 0 && p <= 3 ? p : 2);
 const PNAME = Object.fromEntries(PRIORITY.map((p) => [p.v, p.name]));
+// 删除记录：和网页一样写进 doc.tombs（'列表:id' → 时间），别的设备同步时就不会把它带回来
+const tomb = (doc, k, ids) => { if (!ids.length) return; doc.tombs = doc.tombs && typeof doc.tombs === 'object' ? doc.tombs : {}; const t = new Date().toISOString(); ids.forEach((id) => { doc.tombs[k + ':' + id] = t; }); };
 const list = (doc, k) => (Array.isArray(doc[k]) ? doc[k] : (doc[k] = []));
 
 const todoOut = (t, today) => ({ id: t.id, title: t.title, done: !!t.done, due: t.due || null, time: t.time || null, priority: pri(t.priority), priority_name: PNAME[pri(t.priority)], overdue: !t.done && !!t.due && t.due < today, focus_today: t.focus === today, tags: t.tags || [], note: t.note || undefined, steps: (t.steps || []).map((s) => ({ id: s.id, title: s.title, minutes: s.minutes, done: !!s.done })) });
@@ -108,8 +110,11 @@ const TOOLS = [
     description: 'Create a to-do. Priority: 0 urgent, 1 high, 2 normal (default), 3 low. Steps are optional sub-tasks with minutes. Set focus=true to make it one of today\'s priorities (max 3). If a time is given for today or later, a matching time block is added to the timeline unless schedule=false.',
     inputSchema: S({ title: str('What to do'), due: str('YYYY-MM-DD'), time: str('HH:MM, 24-hour'), priority: { type: 'integer', minimum: 0, maximum: 3 }, tags: { type: 'array', items: { type: 'string' } }, note: str('Optional note'), steps: { type: 'array', items: S({ title: { type: 'string' }, minutes: { type: 'integer', minimum: 5, maximum: 180 } }, ['title']) }, focus: { type: 'boolean' }, schedule: { type: 'boolean' } }, ['title']) },
   { name: 'update_todo', title: 'Update a to-do',
-    description: 'Change an existing to-do by id (from list_todos or get_overview): rename, reschedule (due/time), change priority or note, mark done or not done, add steps, or tick a step done by step id. Only the fields you pass change.',
-    inputSchema: S({ id: str('To-do id'), title: { type: 'string' }, due: str('YYYY-MM-DD, or empty string to clear'), time: str('HH:MM, or empty string to clear'), priority: { type: 'integer', minimum: 0, maximum: 3 }, note: { type: 'string' }, done: { type: 'boolean' }, focus: { type: 'boolean' }, add_steps: { type: 'array', items: S({ title: { type: 'string' }, minutes: { type: 'integer', minimum: 5, maximum: 180 } }, ['title']) }, step_done: str('Id of a step to mark done') }, ['id']) },
+    description: 'Change an existing to-do by id (from list_todos or get_overview): rename, reschedule (due/time), change priority or note, mark done or not done, add or remove steps (remove_steps / clear_steps), or tick a step done by step id. Only the fields you pass change.',
+    inputSchema: S({ id: str('To-do id'), title: { type: 'string' }, due: str('YYYY-MM-DD, or empty string to clear'), time: str('HH:MM, or empty string to clear'), priority: { type: 'integer', minimum: 0, maximum: 3 }, note: { type: 'string' }, done: { type: 'boolean' }, focus: { type: 'boolean' }, add_steps: { type: 'array', items: S({ title: { type: 'string' }, minutes: { type: 'integer', minimum: 5, maximum: 180 } }, ['title']) }, step_done: str('Id of a step to mark done'), remove_steps: { type: 'array', items: { type: 'string' }, description: 'Ids of steps to remove from this to-do (their time blocks are removed too)' }, clear_steps: { type: 'boolean', description: 'Remove all steps of this to-do (and their time blocks)' } }, ['id']) },
+  { name: 'delete_todo', title: 'Delete a to-do', destructive: true,
+    description: 'Delete one to-do and its time blocks. Only use this after the user has clearly asked to delete this specific to-do in this conversation; if in doubt, ask first, and prefer marking it done. Pass confirm=true to show you have their go-ahead. The response contains the full deleted to-do so it can be recreated if needed; the user can also restore an earlier version from Settings → Data → cloud history.',
+    inputSchema: S({ id: str('To-do id'), confirm: { type: 'boolean', description: 'Must be true: the user asked for this deletion' } }, ['id', 'confirm']) },
   { name: 'schedule_block', title: 'Put a time block on the timeline',
     description: `Add a time block to the user's timeline. kind is one of: ${BLOCK_KINDS.map((k) => k.v).join(', ')} (default focus). Link it to a to-do with todo_id; the to-do's date and time then follow the block. Use kind=checkpoint with start=end for a checkpoint (a goal to check at that moment). Only one thing can be on the timeline at a time: if the time is taken, the block moves to the next free slot and the result says so.`,
     inputSchema: S({ title: str('What the time is for'), date: str('YYYY-MM-DD'), start: str('HH:MM'), end: str('HH:MM'), kind: { type: 'string', enum: [...BLOCK_KINDS.map((k) => k.v), 'checkpoint'] }, todo_id: str('Optional to-do id'), note: { type: 'string' } }, ['title', 'date', 'start']) },
@@ -237,9 +242,25 @@ async function callTool(name, a, ctx) {
       if (a.focus === true) { if (list(doc, 'todos').filter((x) => x.focus === today && !x.done && x.id !== t.id).length >= 3) throw new Error('今天的焦点已经有 3 件了'); t.focus = today; t.focusAt = iso(); if (!t.due || t.due > today) t.due = today; }
       if (a.focus === false) { t.focus = ''; t.focusAt = ''; }
       if (Array.isArray(a.add_steps)) t.steps = [...(t.steps || []), ...a.add_steps.slice(0, 20).map((s) => ({ id: uid(), title: String(s.title || '').slice(0, 120), minutes: Math.max(5, Math.min(180, s.minutes || 25)), done: false, kind: '' })).filter((s) => s.title)];
+      if (a.clear_steps || (Array.isArray(a.remove_steps) && a.remove_steps.length)) {
+        const ids = new Set(a.clear_steps ? (t.steps || []).map((x) => x.id) : a.remove_steps.map(String));
+        const miss = [...ids].filter((x) => !(t.steps || []).some((y) => y.id === x)); if (miss.length && !a.clear_steps) throw new Error('这件待办里没有这些步骤 id：' + miss.join(', '));
+        t.steps = (t.steps || []).filter((x) => !ids.has(x.id));
+        const gone = list(doc, 'blocks').filter((b) => b.todoId === t.id && b.stepId && ids.has(b.stepId)); tomb(doc, 'blocks', gone.map((b) => b.id)); doc.blocks = list(doc, 'blocks').filter((b) => !gone.includes(b));
+      }
       if (a.step_done) { const s = (t.steps || []).find((x) => x.id === a.step_done); if (!s) throw new Error('这件待办里没有这个步骤 id'); s.done = true; }
       t.updated = iso();
       return OUT({ updated: todoOut(t, today) });
+    });
+  }
+  if (name === 'delete_todo') {
+    if (a.confirm !== true) return FAIL('删除前要先得到用户同意：确认用户要删这一条之后，带上 confirm=true 再调用。');
+    return mutate(u, (doc) => {
+      const t = list(doc, 'todos').find((x) => x.id === a.id); if (!t) throw new Error('找不到这件待办（id 不对，或者已经删掉了）');
+      const blocks = list(doc, 'blocks').filter((b) => b.todoId === t.id);
+      doc.todos = list(doc, 'todos').filter((x) => x.id !== t.id); doc.blocks = list(doc, 'blocks').filter((b) => b.todoId !== t.id);
+      tomb(doc, 'todos', [t.id]); tomb(doc, 'blocks', blocks.map((b) => b.id));
+      return OUT({ deleted: { title: t.title, removed_time_blocks: blocks.length }, restore_with: { title: t.title, due: t.due || undefined, time: t.time || undefined, priority: pri(t.priority), note: t.note || undefined, tags: t.tags || [], steps: (t.steps || []).map((x) => ({ title: x.title, minutes: x.minutes })) } });
     });
   }
   if (name === 'schedule_block') {
@@ -349,7 +370,7 @@ function layoutCards(c, cards, arrows, notes, near) {
 
 /* ---------------- MCP（JSON-RPC）---------------- */
 const VERSIONS = ['2025-06-18', '2025-03-26', '2024-11-05'];
-const INSTRUCTIONS = 'SealoNote is the user\'s personal planner and notebook. Call get_overview first to see their day. Dates are YYYY-MM-DD and times HH:MM in the user\'s own time zone (get_overview returns today and the time zone). Ask before large changes. There are no delete tools on purpose. Canvases are whiteboards: use create_canvas for mind maps or overviews, and read_canvas before adding to one. Write titles in the language the user uses.';
+const INSTRUCTIONS = 'SealoNote is the user\'s personal planner and notebook. Call get_overview first to see their day. Dates are YYYY-MM-DD and times HH:MM in the user\'s own time zone (get_overview returns today and the time zone). Ask before large changes. Never delete without the user\'s clear go-ahead: delete_todo is the only delete and needs confirm=true; prefer marking things done. Canvases are whiteboards: use create_canvas for mind maps or overviews, and read_canvas before adding to one. Write titles in the language the user uses.';
 async function rpc(msg, ctx) {
   const { id, method, params } = msg || {};
   const reply = (result) => ({ jsonrpc: '2.0', id, result });
@@ -362,7 +383,7 @@ async function rpc(msg, ctx) {
       return reply({ protocolVersion: VERSIONS.includes(want) ? want : VERSIONS[0], capabilities: { tools: { listChanged: false } }, serverInfo: { name: 'sealonote', title: 'SealoNote', version: '1.0.0' }, instructions: INSTRUCTIONS });
     }
     case 'ping': return reply({});
-    case 'tools/list': return reply({ tools: TOOLS.map((t) => ({ name: t.name, title: t.title, description: t.description, inputSchema: t.inputSchema, annotations: { title: t.title, readOnlyHint: !!t.readOnly, destructiveHint: false, idempotentHint: !!t.readOnly, openWorldHint: false } })) });
+    case 'tools/list': return reply({ tools: TOOLS.map((t) => ({ name: t.name, title: t.title, description: t.description, inputSchema: t.inputSchema, annotations: { title: t.title, readOnlyHint: !!t.readOnly, destructiveHint: !!t.destructive, idempotentHint: !!t.readOnly, openWorldHint: false } })) });
     case 'tools/call': {
       const name = params && params.name; if (!TOOLS.some((t) => t.name === name)) return error(-32602, 'Unknown tool: ' + name);
       try { return reply(await callTool(name, params.arguments, ctx)); } catch (e) { return reply(FAIL(e && e.message ? e.message : '出错了')); }
@@ -440,7 +461,7 @@ async function oauth(route, req, res) {
 <ul><li>查看你的待办、时间线、焦点、倒计时、笔记和画布</li><li>新建和修改待办、排时间块</li><li>新建笔记、往笔记里加内容、贴便利贴、画画布</li></ul>
 <div class="who">账号：${esc(s.email || '')}</div>
 <div class="row"><a class="btn no" href="${esc(appr + '&deny=1')}">不允许</a><a class="btn ok" href="${esc(appr)}">允许</a></div>
-<small>它不能删除任何东西。随时可以在 SealoNote 的「设置 → 汤圆 → 连接 Claude」里取消授权。</small>`));
+<small>删除待办之前它会先问你；删错了可以在「设置 → 数据 → 云端历史版本」里找回。随时可以在 SealoNote 的「设置 → 汤圆 → 连接 Claude」里取消授权。</small>`));
   }
 
   if (route === 'token') {
