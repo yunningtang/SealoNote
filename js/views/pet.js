@@ -20,7 +20,8 @@ function dress(THREE, m, look) {
   const old = m.__dress || []; old.forEach((o) => o.parent && o.parent.remove(o)); m.__dress = [];
   const add = (parent, o) => { parent.add(o); m.__dress.push(o); return o; };
   // 汤圆身上有一层毛（往外大约 0.08）：衣服要穿在毛外面，不然被毛盖住、颜色发白
-  const mat = (c, extra = {}) => new THREE.MeshStandardMaterial({ color: c, roughness: .62, envMapIntensity: .35, ...extra });
+  // 场景的色调映射会把颜色压灰：自带一点点自发光，颜色看起来就是选的那个颜色
+  const mat = (c, extra = {}) => new THREE.MeshStandardMaterial({ color: c, emissive: c, emissiveIntensity: .22, roughness: .62, envMapIntensity: .35, ...extra });
   const OUT = m.HR + .14;
   const top = m.head.position.y + OUT * .97; // 头顶（headPiv 坐标）
   if (look.hat === 'beanie') {
@@ -49,17 +50,17 @@ function dress(THREE, m, look) {
     add(m.headPiv, g);
   }
   else if (look.hat === 'straw') {
-    const straw = mat(0xe3c27a, { roughness: .85 });
-    const g = new THREE.Group(); g.position.set(0, top - .1, m.head.position.z - .04); g.rotation.x = -.16;
-    const brim = new THREE.Mesh(new THREE.CylinderGeometry(1.05, 1.1, .05, 48), straw); g.add(brim);
+    const straw = mat(0xeccb7e, { roughness: .85, emissiveIntensity: .3 });
+    const g = new THREE.Group(); g.position.set(0, top - .3, m.head.position.z - .06); g.rotation.x = -.2;
+    const brim = new THREE.Mesh(new THREE.CylinderGeometry(.95, 1, .05, 48), straw); g.add(brim);
     const crown = new THREE.Mesh(new THREE.SphereGeometry(.5, 40, 20, 0, Math.PI * 2, 0, Math.PI / 2), straw); crown.scale.y = .8; g.add(crown);
     const band = new THREE.Mesh(new THREE.CylinderGeometry(.505, .505, .1, 40, 1, true), mat(0xd2524f)); band.position.y = .06; g.add(band);
     add(m.headPiv, g);
   } else if (look.hat === 'party') {
-    const g = new THREE.Group(); g.position.set(.12, top - .06, m.head.position.z); g.rotation.z = -.18;
-    const cone = new THREE.Mesh(new THREE.ConeGeometry(.3, .7, 36), mat(0x4f7cf5)); cone.position.y = .32; g.add(cone);
-    for (let i = 0; i < 3; i++) { const r = new THREE.Mesh(new THREE.TorusGeometry(.27 - i * .085, .03, 8, 32), mat(0xf6cf63)); r.rotation.x = Math.PI / 2; r.position.y = .1 + i * .2; g.add(r); }
-    const pom = new THREE.Mesh(new THREE.SphereGeometry(.09, 16, 12), mat(0xe03a6a)); pom.position.y = .7; g.add(pom);
+    const g = new THREE.Group(); g.position.set(.3, top - .14, m.head.position.z + .05); g.rotation.z = -.42;
+    const cone = new THREE.Mesh(new THREE.ConeGeometry(.24, .5, 36), mat(0x3f6fe8)); cone.position.y = .22; g.add(cone);
+    for (let i = 0; i < 2; i++) { const r = new THREE.Mesh(new THREE.TorusGeometry(.2 - i * .085, .028, 8, 32), mat(0xf6cf63)); r.rotation.x = Math.PI / 2; r.position.y = .1 + i * .17; g.add(r); }
+    const pom = new THREE.Mesh(new THREE.SphereGeometry(.08, 16, 12), mat(0xe03a6a)); pom.position.y = .5; g.add(pom);
     add(m.headPiv, g);
   } else if (look.hat === 'chef') {
     const white = mat(0xfbfbf8, { roughness: .9 });
@@ -77,17 +78,17 @@ function dress(THREE, m, look) {
     });
   } else if (look.hat === 'flowers') {
     const g = new THREE.Group(); g.position.set(0, top - .14, m.head.position.z - .05); g.rotation.x = -.2;
-    g.add(new THREE.Mesh(new THREE.TorusGeometry(.5, .04, 8, 40), mat(0x5c9a52)));
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(.5, .04, 8, 40), mat(0x5c9a52)); ring.rotation.x = Math.PI / 2; g.add(ring);
     const cols = [0xf2a7b8, 0xf6cf63, 0xffffff, 0xc9a7f0];
     for (let i = 0; i < 8; i++) { const a = (i / 8) * Math.PI * 2; const f = new THREE.Group(); f.position.set(Math.sin(a) * .5, .04, Math.cos(a) * .5);
       for (let k = 0; k < 5; k++) { const pa = (k / 5) * Math.PI * 2; const pt = new THREE.Mesh(new THREE.SphereGeometry(.06, 10, 8), mat(cols[i % cols.length])); pt.position.set(Math.cos(pa) * .07, .02, Math.sin(pa) * .07); f.add(pt); }
       const c = new THREE.Mesh(new THREE.SphereGeometry(.045, 10, 8), mat(0xe8aa1c)); c.position.y = .04; f.add(c); g.add(f); }
     add(m.headPiv, g);
   } else if (look.hat === 'cap') {
-    const navy = mat(0x2f4d7a);
+    const navy = mat(0x2a4f9a);
     const g = new THREE.Group(); g.position.set(0, m.head.position.y, m.head.position.z); g.rotation.x = -.1;
     const dome = new THREE.Mesh(new THREE.SphereGeometry(OUT, 40, 20, 0, Math.PI * 2, 0, Math.PI * .3), navy); g.add(dome);
-    const bill = new THREE.Mesh(new THREE.CylinderGeometry(.42, .42, .04, 32, 1, false, -Math.PI / 2, Math.PI), navy); bill.scale.set(1.25, 1, .9); bill.position.set(0, OUT * .78, OUT * .5); bill.rotation.x = .25; g.add(bill);
+    const bill = new THREE.Mesh(new THREE.CylinderGeometry(.42, .42, .04, 32, 1, false, -Math.PI / 2, Math.PI), navy); bill.scale.set(1.3, 1, 1.25); bill.position.set(0, OUT * .66, OUT * .62); bill.rotation.x = .38; g.add(bill);
     const btn = new THREE.Mesh(new THREE.SphereGeometry(.06, 12, 8), mat(0xe03a6a)); btn.position.y = OUT; g.add(btn);
     add(m.headPiv, g);
   }
@@ -120,7 +121,7 @@ function House({ kind }) {
   if (kind === 'beach') return html`<svg class="pet-house" viewBox="0 0 220 120" aria-hidden="true"><path d="M 0.0 74.0 Q 55.0 62.0 110.0 70.0 T 220.0 68.0 V 90.0 H 0.0 Z" fill="#f1dcae"/><path d="M 0.0 82.0 Q 40.0 74.0 80.0 80.0 T 160.0 78.0 T 220.0 80.0 V 90.0 H 0.0 Z" fill="#8ec9e8" opacity=".75"/><circle cx="186" cy="24" r="12" fill="#f6cf63" opacity=".8"/></svg>`;
   if (kind === 'cloud') return html`<svg class="pet-house" viewBox="0 0 220 120" aria-hidden="true"><path d="M30 86 C10 86 10 62 34 62 C36 44 66 40 76 54 C86 36 124 36 132 54 C146 42 176 46 178 64 C204 62 206 88 184 88 Z" fill="#fbfdff" stroke="#d8e4ef" stroke-width="2"/></svg>`;
   if (kind === 'books') return html`<svg class="pet-house" viewBox="0 0 220 120" aria-hidden="true"><rect x="38" y="70" width="144" height="14" rx="3" fill="#d2524f"/><rect x="46" y="84" width="132" height="14" rx="3" fill="#4f7cf5"/><rect x="32" y="98" width="152" height="14" rx="3" fill="#4a9a6a"/><path d="M42 74 H176 M50 88 H172 M36 102 H178" stroke="#fff" stroke-opacity=".5" stroke-width="2"/></svg>`;
-  if (kind === 'lily') return html`<svg class="pet-house" viewBox="0 0 220 120" aria-hidden="true"><ellipse cx="110" cy="84" rx="108" ry="22" fill="#8ec9e8" opacity=".45"/><path d="M110 76 L200 74 A92 18 0 1 1 110 58 Z" fill="#6aa85a"/><path d="M110 76 L200 74" stroke="#4f8a43" stroke-width="2"/><circle cx="40" cy="70" r="7" fill="#f2a7b8"/><circle cx="40" cy="70" r="3" fill="#f6cf63"/></svg>`;
+  if (kind === 'lily') return html`<svg class="pet-house" viewBox="0 0 220 120" aria-hidden="true"><ellipse cx="110" cy="84" rx="108" ry="22" fill="#8ec9e8" opacity=".45"/><ellipse cx="110" cy="72" rx="92" ry="17" fill="#6aa85a"/><path d="M110 72 L196 66 L194 76 Z" fill="#8ec9e8"/><path d="M110 72 L40 66 M110 72 L60 84 M110 72 L160 86" stroke="#4f8a43" stroke-width="1.5" opacity=".6"/><circle cx="40" cy="70" r="7" fill="#f2a7b8"/><circle cx="40" cy="70" r="3" fill="#f6cf63"/></svg>`;
   return null;
 }
 
@@ -146,6 +147,7 @@ export default function Pet({ preview = false }) {
       if (dead || !cv.current) return; three.current = THREE;
       let m; try { m = buildSeal(THREE, cv.current, 190); } catch { rebuild(); return; }
       model.current = m; dress(THREE, m, window.__petLook || look);
+      m.seal.scale.setScalar(.84); m.seal.position.y = -.2; m.shadowMesh.position.y -= .2; // 给高帽子（厨师帽、兔耳朵）留出头顶的空间
       const gl = m.renderer.getContext(); watch = setInterval(() => { if (gl.isContextLost && gl.isContextLost()) { clearInterval(watch); rebuild(); } }, 4000);
       const t0 = performance.now(); let blinkAt = t0 + 2500; let tilt = 0, stretch = 0;
       const loop = (now) => {
