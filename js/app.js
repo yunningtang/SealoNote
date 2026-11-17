@@ -308,6 +308,8 @@ render(BARE === 'seal' ? html`<${Seal} standalone />` : BARE ? html`<${Sticky} /
 })();
 // 时间块撞了别的事被挪开时，告诉一声挪到了哪（同一时间只放一件事，见 nooverlap.js）
 window.addEventListener('blocks:moved', (e) => { const m = e.detail || {}; toast(m.kind === 'end' ? `「${(m.title || '时间块').slice(0, 16)}」停在 ${m.to}，后面是「${(m.past || '').slice(0, 12)}」` : m.kind === 'start-edge' ? `「${(m.title || '时间块').slice(0, 16)}」从 ${m.to} 开始，前面是「${(m.past || '').slice(0, 12)}」` : `「${(m.title || '时间块').slice(0, 16)}」和「${(m.past || '').slice(0, 12)}」撞了，挪到 ${m.to}`); });
+// 待办的提醒：主窗口里每 30 秒看一眼，到点弹系统通知 + 页面提示（便签 / 汤圆小窗口不重复响）
+if (!BARE) import('./remind.js').then(({ startReminders }) => startReminders((t, r) => toast(`⏰ ${t.title}${r.d ? ` · ${r.d} 天后到期` : ''}${t.time ? ' · ' + t.time : ''}`, { label: '打开', onClick: () => go('todos?open=' + t.id), sticky: true })));
 // 记下这台设备的时区：Claude 连接器（/mcp）在服务端按它算「今天」
 if (!BARE) setTimeout(() => { try { const tz = Intl.DateTimeFormat().resolvedOptions().timeZone; if (tz && get().settings.tz !== tz) update((d) => { d.settings.tz = tz; }); } catch {} }, 3000);
 // 订阅扣费前提醒：打开网站几秒后看一眼（同步拉到最新的再提醒），每个订阅每天只提醒一次

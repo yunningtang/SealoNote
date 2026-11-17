@@ -272,7 +272,7 @@ export function toggleTodo(id) {
   const t = state.todos.find((x) => x.id === id);
   if (!t) return;
   const done = !t.done;
-  commit({ ...state, todos: state.todos.map((x) => (x.id === id ? { ...x, done, completedAt: done ? todayStr() : null } : x)) });
+  commit({ ...state, todos: state.todos.map((x) => (x.id === id ? { ...x, done, dropped: false, completedAt: done ? todayStr() : null } : x)) });
   if (done) { try { window.dispatchEvent(new CustomEvent('todo:done', { detail: { id, title: t.title } })); } catch {} } // 游戏风主题拿来放完成特效
 }
 

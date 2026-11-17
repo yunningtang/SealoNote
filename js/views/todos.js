@@ -17,6 +17,7 @@ import { NoteTasks, noteTasks } from './ntasks.js';
 import { parseWhen } from '../when.js';
 import { stepsOf, stepsProgress, toggleStep, setStep, removeStep, moveStep, addSteps, nextStep, clampMin } from '../steps.js';
 import * as pomo from '../pomo.js';
+import { REMIND_PRESETS, remindLabel, remindText, askNotify, isDropped } from '../remind.js';
 
 
 // Quick-add grammar: "写论文 @明天 14:00 !1 #研究 #写作"
@@ -61,32 +62,66 @@ function StepsField({ value, onChange }) {
   </div>`;
 }
 
+// 提醒：一件事可以有几条提醒（当天 / 提前 1 天 / 3 天 / 1 周 / 自定几天，再选几点），下面一行写清楚具体哪天几点会响
+function RemindField({ f, set }) {
+  const list = f.reminders || [];
+  const [edit, setEdit] = useState(null); // 正在改第几条（list.length = 新加的那条）
+  const cur = edit == null ? null : list[edit] || { d: 0, at: f.time || '09:00' };
+  const put = (r) => { const next = [...list]; next[edit] = r; set('reminders', next); };
+  const open = async (i) => { if (!f.due) { toast('先选一个日期，提醒才知道哪天响'); return; } setEdit(i); if (i >= list.length) put({ d: 0, at: f.time || '09:00' }); const p = await askNotify(); if (p === 'denied') toast('浏览器没允许通知：到点只会在 SealoNote 里提示。可以在浏览器的网站设置里打开通知'); };
+  return html`<div class="rm">
+    <div class="rm-row">
+      ${list.map((r, i) => html`<button type="button" key=${i} class=${'rm-chip ' + (edit === i ? 'on' : '')} onClick=${() => setEdit(edit === i ? null : i)}><${Icon} name="clock" size=${12} />${remindLabel(r)}</button>`)}
+      ${list.length === 0 ? html`<button type="button" class="rm-chip add first" onClick=${() => open(0)}><${Icon} name="clock" size=${12} />提醒我</button>` : list.length < 5 && html`<button type="button" class="rm-chip add" onClick=${() => open(list.length)}><${Icon} name="plus" size=${12} />再加一个</button>`}
+    </div>
+    ${cur && html`<div class="rm-pop">
+      <div class="rm-presets">${REMIND_PRESETS.map(([d, l]) => html`<button type="button" key=${d} class=${cur.d === d ? 'on' : ''} onClick=${() => put({ ...cur, d })}>${l}</button>`)}
+        <label class=${'rm-custom ' + (REMIND_PRESETS.some(([d]) => d === cur.d) ? '' : 'on')}>提前<input type="number" min="0" max="60" value=${REMIND_PRESETS.some(([d]) => d === cur.d) ? '' : cur.d} placeholder="几" onInput=${(e) => { const v = Math.max(0, Math.min(60, parseInt(e.target.value, 10) || 0)); put({ ...cur, d: v }); }} />天</label></div>
+      <div class="rm-time"><${TimeInput} value=${cur.at} onChange=${(v) => v && put({ ...cur, at: v })} /><button type="button" class="rm-del" onClick=${() => { set('reminders', list.filter((_, k) => k !== edit)); setEdit(null); }}>不要这个提醒</button></div>
+      <div class="rm-sum">会在 ${remindText(f, cur) || '—'} 提醒</div>
+    </div>`}
+  </div>`;
+}
+// 常用标签：编辑框里点一下就加上 / 去掉
+function TagChips({ value, onChange }) {
+  const s = useStore();
+  const top = useMemo(() => { const m = new Map(); s.todos.forEach((t) => (t.tags || []).forEach((x) => m.set(x, (m.get(x) || 0) + 1))); return [...m].sort((a, b) => b[1] - a[1]).slice(0, 8).map(([k]) => k); }, [s.todos]);
+  const colors = (s.settings && s.settings.tagColors) || {};
+  if (!top.length) return null;
+  return html`<div class="tag-chips">${top.map((x) => html`<button type="button" key=${x} class=${'tag-chip ' + (value.includes(x) ? 'on' : '')} style=${colors[x] ? `--tc:${colors[x]}` : ''} onClick=${() => onChange(value.includes(x) ? value.filter((y) => y !== x) : [...value, x])}><i></i>${x}</button>`)}</div>`;
+}
+
 export function TodoModal({ open, todo, onClose, defaults = {} }) {
   const [f, setF] = useState(null);
+  const isNew = !todo || todo._new;
   useEffect(() => {
-    if (open) setF(todo ? { ...todo } : { id: uid(), title: '', done: false, priority: 2, due: '', time: '', tags: [], area: '', note: '', created: todayStr(), ...defaults });
+    if (open) setF(todo && !todo._new ? { ...todo } : { id: uid(), title: '', done: false, priority: 2, due: '', time: '', tags: [], area: '', note: '', created: todayStr(), ...defaults, ...(todo && todo._new ? todo : {}) });
   }, [open, todo]);
+  const [range, setRange] = useState(false);
+  useEffect(() => { setRange(!!(todo && todo.dueEnd)); }, [open, todo]);
   if (!open || !f) return null;
-  const set = (k, v) => setF({ ...f, [k]: v });
-  const save = () => {
-    if (!f.title.trim()) return;
-    const { _new, ...clean } = f; upsert('todos', { ...clean, title: f.title.trim(), steps: (f.steps || []).filter((x) => x.title && x.title.trim()).map((x) => ({ ...x, title: x.title.trim() })) });
-    onClose();
-  };
-  return html`<${Modal} open=${open} onClose=${onClose} title=${todo && !todo._new ? '编辑待办' : '新建待办'} foot=${html`
-    ${todo && html`<${Btn} kind="ghost danger" icon="trash" onClick=${() => { removeUndo('todos', todo.id, todo.title || todo.place || todo.url); onClose(); }}>删除<//><${Btn} kind="ghost" icon="note" onClick=${() => { onClose(); todoPage(todo); }}>笔记页<//><${Btn} kind="ghost" icon="clock" onClick=${() => { onClose(); go('focus?todo=' + todo.id); }}>专注<//>`}
+  const set = (k, v) => setF((x) => ({ ...x, [k]: v }));
+  const clean = () => { const { _new, ...c } = f; const dueEnd = range && c.dueEnd && c.due && c.dueEnd > c.due ? c.dueEnd : ''; return { ...c, title: f.title.trim(), dueEnd, reminders: (c.reminders || []).filter((r) => r && /^\d\d:\d\d$/.test(r.at || '')), steps: (f.steps || []).filter((x) => x.title && x.title.trim()).map((x) => ({ ...x, title: x.title.trim() })) }; };
+  const save = () => { if (!f.title.trim()) return; upsert('todos', clean()); onClose(); };
+  const drop = () => { if (!f.title.trim()) return; const c = clean(); upsert('todos', { ...c, done: true, dropped: true, completedAt: todayStr() }); toast(`「${c.title.slice(0, 20)}」不做了，记录还留着`, { label: '撤销', onClick: () => upsert('todos', { id: c.id, done: !!todo.done, dropped: !!todo.dropped, completedAt: todo.completedAt || null }) }); onClose(); };
+  return html`<${Modal} open=${open} onClose=${onClose} title=${isNew ? '新建待办' : '编辑待办'} foot=${html`
+    ${!isNew && html`<${Btn} kind="ghost" icon="note" onClick=${() => { onClose(); todoPage(todo); }}>笔记页<//><${Btn} kind="ghost" icon="clock" onClick=${() => { onClose(); go('focus?todo=' + todo.id); }}>专注<//>`}
     <span class="flex1"></span>
-    <${Btn} kind="ghost" onClick=${onClose}>取消<//>
-    <${Btn} kind="primary" icon="check" onClick=${save}>保存<//>`}>
+    ${!isNew && !isDropped(todo) && html`<${Btn} kind="ghost" class="btn-drop" title="决定不做了：从待办里拿掉，但记录留着（和删除不一样）" onClick=${drop}>不做了<//>`}
+    ${!isNew && html`<${Btn} kind="ghost" class="btn-del" title="删掉这条（写错了、重复了）" onClick=${() => { removeUndo('todos', todo.id, todo.title || todo.place || todo.url); onClose(); }}>删除<//>`}
+    ${isNew && html`<${Btn} kind="ghost" onClick=${onClose}>取消<//>`}
+    <${Btn} kind="primary" class="btn-save" icon="check" onClick=${save}>保存<//>`}>
     <div class="form">
       <${Field} label="标题"><input type="text" autofocus value=${f.title} placeholder="要做什么？" onInput=${(e) => set('title', e.target.value)} onKeyDown=${(e) => e.key === 'Enter' && save()} /><//>
       <div class="grid3">
-        <${Field} label="日期"><${DateInput} value=${f.due} onChange=${(v) => set('due', v)} /><//>
-        <${Field} label="时间"><${TimeInput} value=${f.time} onChange=${(v) => set('time', v)} /><//>
+        <${Field} label=${range ? '开始' : '日期'}><${DateInput} value=${f.due} onChange=${(v) => set('due', v)} /><//>
+        ${range ? html`<${Field} label="结束"><${DateInput} value=${f.dueEnd || ''} onChange=${(v) => set('dueEnd', v)} /><//>` : html`<${Field} label="时间"><${TimeInput} value=${f.time} onChange=${(v) => set('time', v)} /><//>`}
         <${Field} label="领域"><${Select} value=${f.area} options=${AREAS} placeholder="—" clearable onChange=${(v) => set('area', v)} /><//>
       </div>
+      <button type="button" class="range-tg" onClick=${() => { if (range) { set('dueEnd', ''); setRange(false); } else { setRange(true); if (!f.due) set('due', todayStr()); if (!f.dueEnd) set('dueEnd', addDays(f.due || todayStr(), 3)); } }}><${Icon} name=${range ? 'x' : 'plus'} size=${12} />${range ? '改回单独一天' : '一段时间'}</button>
+      <${Field} label="提醒"><${RemindField} f=${f} set=${set} /><//>
       <${Field} label="优先级"><div class="pri-pick">${PRIORITY.map((p) => html`<button type="button" style=${`--pc:${p.color}`} class=${f.priority === p.v ? 'on' : ''} title=${p.name} onClick=${() => set('priority', p.v)}>${p.label}</button>`)}</div><//>
-      <${Field} label="标签"><${TagInput} value=${f.tags} onChange=${(v) => set('tags', v)} /><//>
+      <${Field} label="标签"><${TagChips} value=${f.tags || []} onChange=${(v) => set('tags', v)} /><${TagInput} value=${f.tags} onChange=${(v) => set('tags', v)} /><//>
       <${Field} label="备注"><textarea rows="3" value=${f.note} onInput=${(e) => set('note', e.target.value)}></textarea><//>
       <${Field} label="步骤" hint="保存后在待办行里展开勾选；也可以右键待办让汤圆拆。">
         <${StepsField} value=${f.steps || []} onChange=${(v) => set('steps', v)} />
@@ -102,7 +137,8 @@ const nowHHMM = (d = new Date()) => `${pad(d.getHours())}:${pad(d.getMinutes())}
 export function lateState(t, now = new Date()) {
   if (t.done || !t.due) return '';
   const today = todayStr(now);
-  if (t.due < today) return 'late';
+  if (t.dueEnd && t.dueEnd >= today) return ''; // 一段时间的事：还没到结束那天就不算过期
+  if ((t.dueEnd || t.due) < today) return 'late';
   if (t.due === today && t.time && t.time <= nowHHMM(now)) return 'passed';
   return '';
 }
@@ -145,7 +181,7 @@ export function todoMenu(t, onEdit) {
     !t.done && { label: stepsOf(t).length ? '添加一步' : '添加子步骤', icon: 'list', onClick: () => window.dispatchEvent(new CustomEvent('todo:addstep', { detail: t.id })) },
     !t.done && brainMenu(t),
     !t.done && (!t.src || t.src.kind === 'goal') && goalMenu(t),
-    { label: t.done ? '标为未完成' : '标为完成', icon: 'check', onClick: () => toggleTodo(t.id) },
+    { label: isDropped(t) ? '还是要做' : t.done ? '标为未完成' : '标为完成', icon: 'check', onClick: () => toggleTodo(t.id) },
     onEdit && { label: '编辑', icon: 'edit', onClick: () => onEdit(t) },
     !t.done && t.due && { label: lateState(t) ? '推迟…' : '改期…', icon: 'right', sub: postponeItems(t) },
     'sep',
@@ -158,6 +194,7 @@ export function todoMenu(t, onEdit) {
     'sep',
     { label: '复制一份', icon: 'layers', onClick: () => upsert('todos', { ...t, id: uid(), done: false, completedAt: null, created: today }) },
     { label: '复制标题', icon: 'link', onClick: () => { navigator.clipboard && navigator.clipboard.writeText(t.title); toast('已复制'); } },
+    !t.done && { label: '不做了', icon: 'x', hint: '记录留着', onClick: () => { upsert('todos', { id: t.id, done: true, dropped: true, completedAt: today }); toast(`「${t.title.slice(0, 20)}」不做了`, { label: '撤销', onClick: () => upsert('todos', { id: t.id, done: false, dropped: false, completedAt: null }) }); } },
     { label: '删除', icon: 'trash', danger: true, onClick: () => removeUndo('todos', t.id, t.title || t.place || t.url) },
   ];
 }
@@ -257,7 +294,9 @@ export function TodoItem({ t, onEdit, compact }) {
   const today = todayStr();
   const ls = lateState(t, now);
   const dueCls = t.due && !t.done ? (ls === 'late' ? 'late' : ls === 'passed' ? 'passed' : t.due === today ? 'today' : '') : '';
-  const lateTxt = ls === 'late' ? `逾期 ${Math.max(1, Math.round((new Date(today) - new Date(t.due)) / 864e5))} 天` : ls === 'passed' ? '已过' : '';
+  const lateTxt = ls === 'late' ? `逾期 ${Math.max(1, Math.round((new Date(today) - new Date(t.dueEnd || t.due)) / 864e5))} 天` : ls === 'passed' ? '已过' : '';
+  const dueTxt = t.due ? (t.dueEnd ? `${fmtShort(t.due)} – ${fmtShort(t.dueEnd)}` : relDay(t.due) + (t.time ? ' ' + t.time : '')) : '';
+  const bell = !t.done && (t.reminders || []).length > 0 && html`<span class="rm-bell" title=${(t.reminders || []).map(remindLabel).join('、')}><${Icon} name="clock" size=${10} />${(t.reminders || []).length > 1 ? (t.reminders || []).length : remindLabel(t.reminders[0])}</span>`;
   const sp = stepsProgress(t);
   const [showSteps, setShowSteps] = useState(false); // 默认收起：「下一步」那一行已经说了最要紧的，点它再展开全部步骤
   const [forceAdd, setForceAdd] = useState(false); // 右键「添加步骤」：展开并直接给输入框
@@ -265,13 +304,13 @@ export function TodoItem({ t, onEdit, compact }) {
   const ns = !t.done && nextStep(t);
   const nxt = ns && html`<${NextLine} t=${t} open=${showSteps} onToggle=${() => setShowSteps(!showSteps)} />`;
   const chip = sp.total > 0 && html`<button class=${'steps ' + (sp.done === sp.total ? 'all ' : '') + (showSteps ? 'open' : '')} title=${showSteps ? '收起步骤' : '展开步骤'} onClick=${(e) => { e.stopPropagation(); setShowSteps(!showSteps); }}><${Icon} name="list" size=${10} /> ${sp.done}/${sp.total} 步 <${Icon} name=${showSteps ? 'up' : 'down'} size=${9} /></button>`;
-  return html`<div class=${'todo p' + t.priority + ' ' + (t.done ? 'done ' : '') + (showSteps && sp.total ? 'has-steps' : '')} style=${`--pc:${p.color}`} onContextMenu=${(e) => ctxMenu(e, todoMenu(t, onEdit), t.title)} ...${dragProps('todo', { id: t.id })} ...${nestProps(t)}>
+  return html`<div class=${'todo p' + t.priority + ' ' + (t.done ? 'done ' : '') + (isDropped(t) ? 'dropped ' : '') + (showSteps && sp.total ? 'has-steps' : '')} style=${`--pc:${p.color}`} onContextMenu=${(e) => ctxMenu(e, todoMenu(t, onEdit), t.title)} ...${dragProps('todo', { id: t.id })} ...${nestProps(t)}>
     <button class="cb" title=${`${p.label} ${p.name}`} onClick=${() => toggleTodo(t.id)} aria-label="完成"><${Icon} name="check" size=${12} /></button>
     <div class="tt">
-      <div class="ti" onClick=${() => onEdit && onEdit(t)}>${t.title}</div>
+      <div class="ti" onClick=${() => onEdit && onEdit(t)}>${t.title}${isDropped(t) && html`<span class="dropped-tag">不做了</span>`}</div>
       ${!compact && html`<div class="meta">
         ${t.priority <= 1 && !t.done && html`<span class="pri">${p.label} ${p.name}</span>`}
-        ${t.due && html`<span class=${'due ' + dueCls}><${Icon} name="calendar" size=${10} /> ${relDay(t.due)}${t.time ? ' ' + t.time : ''}</span>`}
+        ${t.due && html`<span class=${'due ' + dueCls}><${Icon} name="calendar" size=${10} /> ${dueTxt}</span>`}${bell}
         ${ls && html`<button class=${'defer ' + ls} title="推迟到…" onClick=${(e) => postponeMenu(e, t)}>${lateTxt} · 推迟 <${Icon} name="down" size=${9} /></button>`}
         ${!ls && !t.done && t.deferred > 0 && html`<span class=${'deferred ' + (t.deferred >= 3 ? 'many' : '')} title=${`推迟过 ${t.deferred} 次` + (t.deferred >= 3 ? '，要不要拆开或者放弃？' : '')}><${Icon} name="right" size=${9} /> 推迟 ×${t.deferred}</span>`}
         ${!ns && chip}
@@ -280,7 +319,7 @@ export function TodoItem({ t, onEdit, compact }) {
         ${t.tags.map((x) => html`<${Tag}>#${x}<//>`)}
         ${t.note && html`<span title=${t.note}>· ${t.note.slice(0, 40)}${t.note.length > 40 ? '…' : ''}</span>`}
       </div>`}
-      ${compact && (t.time || ls || (sp.total > 0 && !ns)) && html`<div class="meta">${ls ? html`<button class=${'defer ' + ls} title=${lateTxt + ' · 点击推迟'} onClick=${(e) => postponeMenu(e, t)}>${ls === 'late' ? relDay(t.due) + (t.time ? ' ' + t.time : '') : t.time + ' 已过'} <${Icon} name="down" size=${9} /></button>` : t.time && html`<span class=${'due ' + dueCls}>${t.time}</span>`}${!ns && chip}</div>`}
+      ${compact && (t.time || ls || t.dueEnd || bell || (sp.total > 0 && !ns)) && html`<div class="meta">${t.dueEnd && !ls && html`<span class="due">${fmtShort(t.due)} – ${fmtShort(t.dueEnd)}</span>`}${bell}${ls ? html`<button class=${'defer ' + ls} title=${lateTxt + ' · 点击推迟'} onClick=${(e) => postponeMenu(e, t)}>${ls === 'late' ? relDay(t.due) + (t.time ? ' ' + t.time : '') : t.time + ' 已过'} <${Icon} name="down" size=${9} /></button>` : t.time && html`<span class=${'due ' + dueCls}>${t.time}</span>`}${!ns && chip}</div>`}
       ${nxt}
       ${(showSteps && sp.total > 0 || forceAdd) && html`<${StepList} t=${t} autoAdd=${forceAdd} />`}
     </div>

@@ -111,8 +111,8 @@ export function Card({ title, sub, action, class: cls = '', children, pad = true
   </section>`;
 }
 
-export function Btn({ children, kind = '', icon, small, ...rest }) {
-  return html`<button class=${'btn ' + kind + (small ? ' sm' : '')} type="button" ...${rest}>${icon && html`<${Icon} name=${icon} size=${small ? 13 : 15} />`}${children}</button>`;
+export function Btn({ children, kind = '', icon, small, class: cls = '', ...rest }) {
+  return html`<button class=${'btn ' + kind + (small ? ' sm' : '') + (cls ? ' ' + cls : '')} type="button" ...${rest}>${icon && html`<${Icon} name=${icon} size=${small ? 13 : 15} />`}${children}</button>`;
 }
 
 // 折叠 / 展开：grid-template-rows 0fr → 1fr，高度跟着内容平滑变化（不用量高度）。第一次展开才渲染里面的东西

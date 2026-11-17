@@ -4985,3 +4985,38 @@ html,body{-ms-overflow-style:none}
 .dnav{grid-template-columns:auto minmax(0,1fr) auto}.dnav-l{min-width:0}
 .dstrip{min-width:0;overflow:hidden;justify-content:center}
 @media(max-width:1180px){.dnav{grid-template-columns:1fr auto}.dstrip{grid-column:1/-1;grid-row:2;width:100%}}
+/* ---- 待办：提醒 ---- */
+.rm-row{display:flex;flex-wrap:wrap;gap:6px}
+.rm-chip{display:inline-flex;align-items:center;gap:5px;height:30px;padding:0 12px;border-radius:999px;font-size:.82rem;color:var(--text-2,var(--text));background:var(--hover);border:0;cursor:pointer}
+.rm-chip.on,.rm-chip:not(.add){background:color-mix(in srgb,var(--orange,#e0894f) 14%,transparent);color:color-mix(in srgb,var(--orange,#e0894f) 75%,var(--text));box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--orange,#e0894f) 45%,transparent)}
+.rm-chip.add{background:transparent;color:var(--text-3);box-shadow:inset 0 0 0 1px var(--line-2)}
+.rm-chip.add.first{color:color-mix(in srgb,var(--orange,#e0894f) 80%,var(--text));box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--orange,#e0894f) 45%,transparent)}
+.rm-chip.add:hover{color:var(--text)}
+.rm-pop{margin-top:8px;padding:12px;border-radius:12px;background:var(--hover);display:grid;gap:10px}
+.rm-presets{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.rm-presets button,.rm-custom{height:28px;padding:0 11px;border-radius:999px;border:0;background:var(--paper);color:var(--text-3);font-size:.8rem;display:inline-flex;align-items:center;gap:4px;cursor:pointer;box-shadow:inset 0 0 0 1px var(--line)}
+.rm-presets button.on,.rm-custom.on{color:var(--text);box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--orange,#e0894f) 60%,transparent)}
+.rm-custom input{width:34px;height:22px;border:0;background:var(--hover);border-radius:6px;text-align:center;font:inherit;color:var(--text);padding:0}
+.rm-time{display:flex;align-items:center;gap:12px}.rm-time .pick-btn{min-width:110px}
+.rm-del{border:0;background:none;color:var(--text-4);font-size:.8rem;cursor:pointer}.rm-del:hover{color:var(--red,#d2524f)}
+.rm-sum{font-size:.8rem;color:var(--text-3)}
+.rm-bell{display:inline-flex;align-items:center;gap:3px;color:color-mix(in srgb,var(--orange,#e0894f) 80%,var(--text-3))}
+/* ---- 待办：常用标签一点就选 ---- */
+.tag-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+.tag-chip{--tc:var(--text-4);display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 11px;border-radius:999px;border:0;background:transparent;box-shadow:inset 0 0 0 1px var(--line-2);color:var(--text-3);font-size:.8rem;cursor:pointer}
+.tag-chip i{width:7px;height:7px;border-radius:50%;background:var(--tc)}
+.tag-chip.on{color:var(--text);background:color-mix(in srgb,var(--tc) 12%,transparent);box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--tc) 55%,transparent)}
+/* ---- 一段时间 ---- */
+.range-tg{display:inline-flex;align-items:center;gap:5px;margin:-6px 0 2px;border:0;background:none;color:var(--text-3);font-size:.8rem;cursor:pointer;padding:2px 0}.range-tg:hover{color:var(--text)}
+/* ---- 编辑框底部：保存最显眼，不做了灰，删除淡红 ---- */
+.modal .btn-save{min-width:132px;justify-content:center}
+.modal .btn-drop{color:var(--text-3)}
+.modal .btn-del{color:color-mix(in srgb,var(--red,#d2524f) 80%,var(--text-3))}.modal .btn-del:hover{background:color-mix(in srgb,var(--red,#d2524f) 10%,transparent)}
+/* ---- 不做了 ---- */
+.todo.dropped .ti{text-decoration:line-through;text-decoration-color:var(--text-4);color:var(--text-4)}
+.dropped-tag{display:inline-block;margin-left:7px;padding:0 6px;border-radius:5px;font-size:.68rem;line-height:1.6;background:var(--hover);color:var(--text-4);text-decoration:none;vertical-align:1px}
+.todo.dropped .cb{opacity:.45}
+/* ---- 每天下面的 + ---- */
+.day-add{display:flex;align-items:center;gap:6px;width:100%;margin-top:6px;padding:7px 8px;border:0;border-radius:var(--r2);background:transparent;color:var(--text-4);font-size:.82rem;cursor:pointer;text-align:left}
+.day-add:hover{background:var(--hover);color:var(--text)}
+.day-add.sm{margin:2px 0 0;padding:4px 10px;font-size:.74rem}

@@ -1,3 +1,4 @@
+import { onDay } from '../remind.js';
 import { html, useState, useMemo, useEffect, useRef } from '../../vendor/preact.js';
 import { useStore, update, upsert, remove, get, removeUndo } from '../store.js';
 import { Icon, IconBtn, Btn, Card, Modal, Field, Tag, Empty, Seg, Progress, confirmDel, AutoTextarea, DateInput, TimeInput, Select, colorSub } from '../ui.js';
@@ -57,13 +58,14 @@ function WeekBoard() {
     <div class="week">
       ${days.map((d, i) => {
         const items = wk.items[d] || [];
-        const todos = sortBy(s.todos.filter((t) => t.due === d), 'priority', 'time');
+        const todos = sortBy(s.todos.filter((t) => onDay(t, d)), 'priority', 'time');
         return html`<${Card} class=${'wday ' + (d === today ? 'today' : '')} pad=${false} ...${dropProps(['todo', 'wkitem', 'block'], (x) => { if (x.kind === 'wkitem') { if (x.date === d) return; setWeek((w) => { const it = (w.items[x.date] || []).find((i) => i.id === x.id); if (!it) return; w.items[x.date] = w.items[x.date].filter((i) => i.id !== x.id); w.items[d] = w.items[d] || []; w.items[d].push(it); }); } else if (x.kind === 'block') upsert('blocks', { id: x.id, date: d }); else upsert('todos', { id: x.id, due: d }); })}>
           <div class="dh"><b>${WEEKDAY[i]}</b><span>${fmtShort(d)}${d === today ? ' · 今天' : ''}</span></div>
           <ul>
             ${todos.map((t) => html`<li class="todo-li" key=${t.id} ...${dragProps('todo', { id: t.id })}><${TodoItem} t=${t} compact onEdit=${(x) => setEditing(x)} /></li>`)}
             ${items.map((it) => html`<li class=${it.done ? 'done' : ''} onClick=${() => toggle(d, it.id)} ...${dragProps('wkitem', { kind: 'wkitem', id: it.id, date: d })} onContextMenu=${(e) => ctxMenu(e, [{ label: it.done ? '标为未完成' : '标为完成', icon: 'check', onClick: () => toggle(d, it.id) }, { label: '转为待办', icon: 'checksq', onClick: () => { upsert('todos', { id: uid(), title: it.text, done: it.done, priority: 2, due: d, time: '', tags: [], area: '', note: '', created: todayStr() }); del(d, it.id); } }, ...[1, 2, 3].map((n) => ({ label: `移到 ${n} 天后`, icon: 'right', onClick: () => { del(d, it.id); const nd = addDays(d, n); setWeek((w) => { w.items[nd] = w.items[nd] || []; w.items[nd].push({ ...it }); }); if (!days.includes(nd)) setStart(weekStart(nd)); } })), 'sep', { label: '删除', icon: 'trash', danger: true, onClick: () => del(d, it.id) }], it.text)}><span class="dot"></span><span class="flex1">${it.text}</span><button class="ibtn" style="width:18px;height:18px" onClick=${(e) => { e.stopPropagation(); del(d, it.id); }}><${Icon} name="x" size=${10} /></button></li>`)}
           </ul>
+          <button type="button" class="day-add sm" title="在这天加一件待办" onClick=${() => setEditing({ _new: true, due: d })}><${Icon} name="plus" size=${12} />待办</button>
           <div class="add"><input type="text" placeholder="+ 计划" onKeyDown=${(e) => { if (e.key === 'Enter' && e.target.value.trim()) { addItem(d, e.target.value.trim()); e.target.value = ''; } }} /></div>
         <//>`;
       })}
@@ -289,7 +291,7 @@ function DayView({ initial }) {
   const [start, setStart] = useState('09:00'); const [newKind, setNewKind] = useState('');
   const [tEdit, setTEdit] = useState(null);
   const blocks = useMemo(() => sortBy(s.blocks.filter((b) => b.date === date && !b.pomo), 'start'), [s.blocks, date]);
-  const todos = useMemo(() => sortBy(s.todos.filter((t) => t.due === date), 'done', 'priority', 'time'), [s.todos, date]);
+  const todos = useMemo(() => sortBy(s.todos.filter((t) => onDay(t, date)), 'done', 'priority', 'time'), [s.todos, date]);
   const sum = useMemo(() => {
     const m = {};
     blocks.forEach((b) => { m[b.kind] = (m[b.kind] || 0) + Math.max(0, timeToMin(b.end) - timeToMin(b.start)); });
@@ -329,6 +331,7 @@ function DayView({ initial }) {
       <div class="stack">
         <${Card} class="grow" title="当天待办" sub=${`${todos.filter((t) => t.done).length}/${todos.length}`}>
           ${todos.length === 0 ? html`<${Empty} icon="checksq" text="这天没有安排待办。" />` : todos.map((t) => html`<${TodoItem} t=${t} compact onEdit=${(x) => setTEdit(x)} />`)}
+          <button type="button" class="day-add" onClick=${() => setTEdit({ _new: true, due: date })}><${Icon} name="plus" size=${13} />添加待办</button>
         <//>
         <${Card} title="时间分配">
           ${sum.length === 0 ? html`<p class="small muted">还没有时间块。</p>` : html`<div class="day-sum">${sum.map((k) => html`<div class="r"><i style=${`background:${k.color}`}></i>${k.name}<b>${(k.min / 60).toFixed(1)}h</b></div>`)}<div class="r" style="border-top:1px solid var(--line);padding-top:6px"><i style="background:transparent"></i>合计<b>${(sum.reduce((n, k) => n + k.min, 0) / 60).toFixed(1)}h</b></div></div>`}
