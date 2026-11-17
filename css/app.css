@@ -5098,3 +5098,10 @@ img.pet-doll.drop{animation:pet-drop .55s cubic-bezier(.3,1.6,.5,1),pet-breathe 
 .pet .pet-stage{height:auto;min-height:0;place-items:end center}
 .room-seal img.pet-doll{width:100%;height:auto}
 .pet-dress-prev img.pet-doll{width:170px;height:170px}
+/* 裁掉空白之后：气泡、计时贴着汤圆头顶 */
+.pet .pet-say,.pet .pet-pomo{margin-bottom:4px}
+img.pet-doll{width:auto;height:auto;max-width:200px}
+.pet .pet-stage{display:flex;align-items:flex-end;justify-content:center}
+.room-seal img.pet-doll{width:100%!important;height:auto!important;max-width:none}
+.pet-dress-prev img.pet-doll{width:auto!important;height:auto!important;max-width:170px;max-height:170px}
+.pet.preview{height:auto;min-height:220px;justify-content:center}

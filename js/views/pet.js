@@ -114,7 +114,7 @@ function dress(THREE, m, look) {
 }
 
 // 「定格画」：用 3D 模型拍几张姿势，拍完立刻释放 3D（同一时间只拍一组，拍过的记住）
-const framesCache = new Map(); let snapQ = Promise.resolve(null); const FRAME_V = 1;
+const framesCache = new Map(); let snapQ = Promise.resolve(null); const FRAME_V = 2;
 export const FALLBACK = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120"><path d="M16 96 C12 64 32 34 60 34 C88 34 108 64 104 96 C102 108 84 112 60 112 C36 112 18 108 16 96 Z" fill="#eef0f3" stroke="#d3d2cd" stroke-width="1.5"/><circle cx="44" cy="72" r="5" fill="#1f1e1c"/><circle cx="76" cy="72" r="5" fill="#1f1e1c"/></svg>');
 export function snapFrames(look) {
   const key = JSON.stringify(look); if (framesCache.has(key)) return Promise.resolve(framesCache.get(key));
@@ -128,10 +128,18 @@ export function snapFrames(look) {
       m.renderer.setPixelRatio(Math.min(3, Math.max(2, window.devicePixelRatio || 1))); m.renderer.setSize(190, 190, false);
       dress(THREE, m, look); m.seal.scale.setScalar(.84); m.seal.position.y = -.2; m.shadowMesh.position.y -= .2; // 给高帽子留出头顶的空间
       const base = () => { m.rig.position.y = 0; m.headPiv.rotation.z = 0; m.tailPiv.rotation.y = 0; m.flips.forEach(({ piv, sx }) => { piv.rotation.z = sx * -.22; }); m.eyes.forEach((e) => { e.scale.y = 1; }); };
-      const shot = () => { m.renderer.render(m.scene, m.camera); return cv.toDataURL('image/png'); };
-      const f = {}; base(); f.idle = shot();
-      base(); m.eyes.forEach((e) => { e.scale.y = .08; }); f.blink = shot();
-      for (const [name, sd] of [['left', -1], ['right', 1]]) { base(); m.rig.position.y = .05; m.headPiv.rotation.z = sd * .08; m.tailPiv.rotation.y = sd * .15; m.flips.forEach(({ piv, sx }) => { piv.rotation.z = sx * -.22 + (sx === sd ? sx * .9 : 0); }); f[name] = shot(); }
+      // 每张先画到 2D 画布上，最后按所有姿势合起来的范围把四周空白裁掉：气泡、计时就能贴着汤圆头顶（戴高帽子也一样）
+      const pr = m.renderer.getPixelRatio(); const shots = {};
+      const shot = (name) => { m.renderer.render(m.scene, m.camera); const c = document.createElement('canvas'); c.width = cv.width; c.height = cv.height; c.getContext('2d').drawImage(cv, 0, 0); shots[name] = c; };
+      base(); shot('idle');
+      base(); m.eyes.forEach((e) => { e.scale.y = .08; }); shot('blink');
+      for (const [name, sd] of [['left', -1], ['right', 1]]) { base(); m.rig.position.y = .05; m.headPiv.rotation.z = sd * .08; m.tailPiv.rotation.y = sd * .15; m.flips.forEach(({ piv, sx }) => { piv.rotation.z = sx * -.22 + (sx === sd ? sx * .9 : 0); }); shot(name); }
+      let x0 = 1e9, y0 = 1e9, x1 = -1, y1 = -1;
+      for (const c of Object.values(shots)) { const { data, width: w, height: h } = c.getContext('2d').getImageData(0, 0, c.width, c.height); for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (data[(y * w + x) * 4 + 3] > 10) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; } }
+      if (x1 < 0) { x0 = y0 = 0; x1 = cv.width - 1; y1 = cv.height - 1; }
+      const pad = Math.round(4 * pr); x0 = Math.max(0, x0 - pad); y0 = Math.max(0, y0 - pad); x1 = Math.min(cv.width - 1, x1 + pad); y1 = Math.min(cv.height - 1, y1 + pad);
+      const cw = x1 - x0 + 1, ch = y1 - y0 + 1; const f = { w: Math.round(cw / pr), h: Math.round(ch / pr) };
+      for (const [name, c] of Object.entries(shots)) { const o = document.createElement('canvas'); o.width = cw; o.height = ch; o.getContext('2d').drawImage(c, x0, y0, cw, ch, 0, 0, cw, ch); f[name] = o.toDataURL('image/png'); }
       framesCache.set(key, f); try { localStorage.setItem('ytos.pet.frames', JSON.stringify({ v: FRAME_V, key, f })); } catch {} return f;
     } finally { try { m.dispose(); m.renderer.forceContextLoss(); } catch {} }
   });
@@ -208,7 +216,7 @@ export default function Pet({ preview = false, bare = false }) {
   const remain = st.phase !== 'idle' ? pomo.remaining() : 0; const total = (st.phase === 'break' ? st.breakLen : st.workLen) * 60; const frac = total ? Math.min(1, Math.max(0, 1 - remain / total)) : 0; const C = 2 * Math.PI * 15;
   const item = (label, fn) => html`<button type="button" onClick=${() => { setMenu(false); fn(); }}>${label}</button>`;
 
-  const Doll = html`<div class=${'pet-doll-w'} style=${`transform:rotate(${tilt}deg)`}><img key=${bounce} class=${'pet-doll' + (bounce ? ' drop' : '')} src=${frames ? frames[pose] || frames.idle : FALLBACK} alt="汤圆" draggable="false" /></div>`;
+  const Doll = html`<div class=${'pet-doll-w'} style=${`transform:rotate(${tilt}deg)`}><img key=${bounce} class=${'pet-doll' + (bounce ? ' drop' : '')} src=${frames ? frames[pose] || frames.idle : FALLBACK} style=${frames && frames.w ? `width:${frames.w}px;height:${frames.h}px` : ''} alt="汤圆" draggable="false" /></div>`;
   if (bare) return Doll;
   if (preview) return html`<div class="pet preview"><div class="pet-say">${msg || '在下面给我换装吧'}</div><div class="pet-stage">${Doll}</div></div>`;
   return html`<div class=${'pet ' + (roomOn ? 'room-mode ' : '')} onPointerDown=${down} onPointerMove=${move} onPointerUp=${up} onWheel=${wheel} onContextMenu=${(e) => { e.preventDefault(); setMenu(true); }}>
