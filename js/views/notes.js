@@ -184,7 +184,7 @@ export function PageTree({ notes, parent = null, depth = 0, activeId, open, togg
   if (!kids.length) return null;
   return html`<ul class=${'ptree ' + (depth === 0 ? 'root' : '')}>${kids.map((n) => {
     const has = notes.some((x) => x.parent === n.id);
-    const isOpen = !!open[n.id];
+    const isOpen = open[n.id] !== false; // 默认展开；你收起过的记住
     return html`<li key=${n.id}>
       <div class=${'pt-row ' + (n.id === activeId ? 'active' : '')} style=${`padding-left:${8 + depth * 14}px`} onContextMenu=${(e) => ctxMenu(e, pageMenu(n, notes, { openPath }), noteTitle(n))} ...${dragProps('page', { id: n.id })} ...${dropProps('page', (d, { event }) => { if (d.id === n.id) return; const r = event.currentTarget.getBoundingClientRect(); const y = (event.clientY - r.top) / r.height; if (y > 0.3 && y < 0.7) { movePage(d.id, { parent: n.id }); openPath && openPath([n.id]); } else movePage(d.id, { parent: n.parent || null, nb: n.nb, [y >= 0.7 ? 'after' : 'before']: n.id }); })}>
         <button class=${'pt-tg ' + (has ? '' : 'none ') + (isOpen ? 'open' : '')} title=${has ? (isOpen ? '收起（Alt 点一下：连子页面一起）' : '展开（Alt 点一下：连子页面一起）') : ''} onClick=${(e) => { e.preventDefault(); e.stopPropagation(); if (e.altKey && openPath) { const ids = [...subtreeIds(notes, n.id)].filter((x) => notes.some((y) => y.parent === x)); if (isOpen) ids.forEach((x) => open[x] && toggle(x)); else openPath(ids); } else toggle(n.id); }} aria-label=${isOpen ? '收起' : '展开'} aria-expanded=${has ? String(isOpen) : undefined}><${Icon} name="right" size=${12} /></button>
@@ -198,9 +198,9 @@ export function PageTree({ notes, parent = null, depth = 0, activeId, open, togg
 
 export function useTreeState() {
   const [open, setOpen] = useState(() => { try { return JSON.parse(localStorage.getItem('ytos.tree') || '{}'); } catch { return {}; } });
-  const toggle = (id) => setOpen((o) => { const n = { ...o, [id]: !o[id] }; try { localStorage.setItem('ytos.tree', JSON.stringify(n)); } catch {} return n; });
+  const toggle = (id) => setOpen((o) => { const n = { ...o, [id]: o[id] === false }; try { localStorage.setItem('ytos.tree', JSON.stringify(n)); } catch {} return n; });
   const openPath = (ids) => setOpen((o) => { const n = { ...o }; ids.forEach((i) => { n[i] = true; }); try { localStorage.setItem('ytos.tree', JSON.stringify(n)); } catch {} return n; });
-  const closeAll = () => setOpen(() => { try { localStorage.setItem('ytos.tree', '{}'); } catch {} return {}; });
+  const closeAll = () => setOpen(() => { const n = Object.fromEntries(get().notes.filter((x) => get().notes.some((y) => y.parent === x.id)).map((x) => [x.id, false])); try { localStorage.setItem('ytos.tree', JSON.stringify(n)); } catch {} return n; });
   return { open, toggle, openPath, closeAll };
 }
 
@@ -221,6 +221,7 @@ export default function Notes({ route }) {
   const [renaming, setRenaming] = useState(null);
   const [expanded, setExpanded] = useState(() => { try { return JSON.parse(localStorage.getItem('ytos.nbx') || '{}'); } catch { return {}; } });
   useEffect(() => { try { localStorage.setItem('ytos.nbx', JSON.stringify(expanded)); } catch {} }, [expanded]);
+  const exp = (k) => expanded[k] !== false; // 本子默认展开；你收起过的记住
   const tree = useTreeState();
   const pick = (v) => { setNbSel(v); setQ(''); try { localStorage.setItem('ytos.nb', v); } catch {} };
   const setPane = (k, v) => setPanes((p) => { const n = { ...p, [k]: v }; try { localStorage.setItem('ytos.panes', JSON.stringify(n)); } catch {} return n; });
@@ -263,20 +264,20 @@ export default function Notes({ route }) {
   if (standalone) return html`<div class="nb-layout no-nb no-list standalone m-page"><section class="card notes-main"><${CanvasView} id=${id.slice(7)} notes=${s.notes} notebooks=${nbs} /></section></div>`;
   return html`<div class=${'nb-layout ' + (panes.nb ? '' : 'no-nb ') + (panes.list ? '' : 'no-list ') + (id ? 'm-page ' : '')}>
     ${panes.nb && html`<aside class="card nb-col">
-      <div class="nb-h"><h3>本子</h3><div class="row" style="gap:2px">${(() => { const allOpen = !!expanded.all && nbs.every((b) => !counts.get(b.id) || expanded[b.id]); return html`<button type="button" class="tree-mini" title=${allOpen ? '收起所有本子和子页面' : '展开所有本子和子页面'} onClick=${() => { if (allOpen) { setExpanded({}); tree.closeAll(); } else { setExpanded(Object.fromEntries([['all', true], ...nbs.map((b) => [b.id, true])])); tree.openPath(s.notes.filter((n) => s.notes.some((x) => x.parent === n.id)).map((n) => n.id)); } }}>${allOpen ? '全部收起' : '全部展开'}</button>`; })()}<${IconBtn} icon="plus" title="新本子" onClick=${() => { const nb = newNotebook(); setRenaming(nb.id); pick(nb.id); }} /><${IconBtn} icon="left" title="收起" onClick=${() => setPane('nb', false)} /></div></div>
+      <div class="nb-h"><h3>本子</h3><div class="row" style="gap:2px">${(() => { const allOpen = !!expanded.all && nbs.every((b) => !counts.get(b.id) || exp(b.id)); return html`<button type="button" class="tree-mini" title=${allOpen ? '收起所有本子和子页面' : '展开所有本子和子页面'} onClick=${() => { if (allOpen) { setExpanded(Object.fromEntries([['all', false], ...nbs.map((b) => [b.id, false])])); tree.closeAll(); } else { setExpanded(Object.fromEntries([['all', true], ...nbs.map((b) => [b.id, true])])); tree.openPath(s.notes.filter((n) => s.notes.some((x) => x.parent === n.id)).map((n) => n.id)); } }}>${allOpen ? '全部收起' : '全部展开'}</button>`; })()}<${IconBtn} icon="plus" title="新本子" onClick=${() => { const nb = newNotebook(); setRenaming(nb.id); pick(nb.id); }} /><${IconBtn} icon="left" title="收起" onClick=${() => setPane('nb', false)} /></div></div>
       <div class="nb-list" data-liquid=".nb-i"><span class="liq"></span>
         <div><button class=${'nb-i ' + (nbSel === 'all' ? 'active' : '')} aria-expanded=${String(!!expanded.all)} onClick=${() => { if (nbSel === 'all') setExpanded((x) => ({ ...x, all: !x.all })); else { pick('all'); setExpanded((x) => ({ ...x, all: true })); } }}><span class=${'nb-tg ' + (expanded.all ? 'open ' : '') + (s.notes.length ? '' : 'none')} title=${expanded.all ? '收起' : '展开全部页面'} onClick=${(e) => { e.stopPropagation(); setExpanded((x) => ({ ...x, all: !x.all })); }}><${Icon} name="right" size=${11} /></span><${Icon} name="note" size=${14} /><span class="flex1">全部笔记</span><small>${s.notes.length}</small></button>
         ${expanded.all && s.notes.length > 0 && html`<div class="nb-sub tree-in">${nbs.filter((b) => counts.get(b.id)).map((b) => html`<div key=${b.id} class="nb-all-g"><div class="nb-all-h"><i class="nb-dot" style=${`background:${b.color}`}></i>${b.name}</div><${PageTree} notes=${s.notes} nb=${b.id} activeId=${id} open=${tree.open} toggle=${tree.toggle} onCreate=${create} openPath=${tree.openPath} max=${300} /></div>`)}</div>`}</div>
         <button class=${'nb-i ' + (nbSel === 'fav' ? 'active' : '')} onClick=${() => pick('fav')} ...${dropProps('page', (d) => upsert('notes', { id: d.id, pinned: true }))}><${Icon} name="star" size=${14} /><span class="flex1">收藏</span><small>${s.notes.filter((n) => n.pinned).length}</small></button>
         <div class="nb-sec">本子</div>
-        ${nbs.map((b) => html`<div key=${b.id}><button class=${'nb-i ' + (nbSel === b.id ? 'active' : '')} aria-expanded=${counts.get(b.id) ? String(!!expanded[b.id]) : undefined} onClick=${() => { if (nbSel === b.id) { if (counts.get(b.id)) setExpanded((x) => ({ ...x, [b.id]: !x[b.id] })); } else { pick(b.id); if (counts.get(b.id)) setExpanded((x) => ({ ...x, [b.id]: true })); } }} onDblClick=${() => setRenaming(b.id)} onContextMenu=${(e) => ctxMenu(e, notebookMenu(b, s, () => setRenaming(b.id)), b.name)}
+        ${nbs.map((b) => html`<div key=${b.id}><button class=${'nb-i ' + (nbSel === b.id ? 'active' : '')} aria-expanded=${counts.get(b.id) ? String(!!exp(b.id)) : undefined} onClick=${() => { if (nbSel === b.id) { if (counts.get(b.id)) setExpanded((x) => ({ ...x, [b.id]: x[b.id] === false })); } else { pick(b.id); if (counts.get(b.id)) setExpanded((x) => ({ ...x, [b.id]: true })); } }} onDblClick=${() => setRenaming(b.id)} onContextMenu=${(e) => ctxMenu(e, notebookMenu(b, s, () => setRenaming(b.id)), b.name)}
           ...${dragProps('notebook', { id: b.id })} ...${dropProps(['page', 'notebook'], (d, { after }) => { if (d.id === b.id) return; if (s.notes.some((n) => n.id === d.id)) { movePage(d.id, { nb: b.id, parent: null }); } else { update((dd) => { const list = dd.notebooks.sort((x, y) => x.order - y.order); const from = list.findIndex((x) => x.id === d.id); const [mv] = list.splice(from, 1); let to = list.findIndex((x) => x.id === b.id); if (after) to++; list.splice(to, 0, mv); list.forEach((x, i) => { x.order = i; }); }); } }, { position: true })}>
-          <span class=${'nb-tg ' + (expanded[b.id] ? 'open ' : '') + (counts.get(b.id) ? '' : 'none')} title=${expanded[b.id] ? '收起' : '展开'} onClick=${(e) => { e.stopPropagation(); setExpanded((x) => ({ ...x, [b.id]: !x[b.id] })); }}><${Icon} name="right" size=${11} /></span>
+          <span class=${'nb-tg ' + (exp(b.id) ? 'open ' : '') + (counts.get(b.id) ? '' : 'none')} title=${exp(b.id) ? '收起' : '展开'} onClick=${(e) => { e.stopPropagation(); setExpanded((x) => ({ ...x, [b.id]: x[b.id] === false })); }}><${Icon} name="right" size=${11} /></span>
           <i class="nb-dot" style=${`background:${b.color}`}></i>
           ${renaming === b.id ? html`<input class="nb-rename" ref=${(el) => { if (el && !el.dataset.f) { el.dataset.f = 1; setTimeout(() => { el.focus(); el.select(); }, 0); } }} value=${b.name} onClick=${(e) => e.stopPropagation()} onBlur=${(e) => { const v = e.target.value.trim(); if (v) update((d) => { d.notebooks.find((x) => x.id === b.id).name = v; }); setRenaming(null); }} onKeyDown=${(e) => { if (e.key === 'Enter') e.target.blur(); if (e.key === 'Escape') setRenaming(null); }} />` : html`<span class="flex1">${b.name}</span>`}
           <small>${counts.get(b.id) || 0}</small>
         </button>
-        ${expanded[b.id] && counts.get(b.id) > 0 && html`<div class="nb-sub tree-in"><${PageTree} notes=${s.notes} nb=${b.id} activeId=${id} open=${tree.open} toggle=${tree.toggle} onCreate=${create} openPath=${tree.openPath} max=${200} /></div>`}
+        ${exp(b.id) && counts.get(b.id) > 0 && html`<div class="nb-sub tree-in"><${PageTree} notes=${s.notes} nb=${b.id} activeId=${id} open=${tree.open} toggle=${tree.toggle} onCreate=${create} openPath=${tree.openPath} max=${200} /></div>`}
         </div>`)}
         <button class="nb-i new" onClick=${() => { const nb = newNotebook(); setRenaming(nb.id); pick(nb.id); }}><${Icon} name="plus" size=${13} /><span>新本子</span></button>
       </div>

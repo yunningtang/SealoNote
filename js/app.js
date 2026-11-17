@@ -122,8 +122,7 @@ function App() {
   const [mini, setMini] = useState(() => { try { return localStorage.getItem('ytos.side') === 'mini'; } catch { return false; } });
   const toggleMini = () => { if (matchMedia('(max-width:900px)').matches) { setMenu(false); return; } setMini((m) => { try { localStorage.setItem('ytos.side', m ? 'full' : 'mini'); } catch {} return !m; }); };
   const toggleNav = (k) => setNavOpen((o) => { const n = { ...o, [k]: o[k] === false }; try { localStorage.setItem('ytos.nav', JSON.stringify(n)); } catch {} return n; });
-  // 笔记里的本子默认折叠，只展开当前页面所在的那个；手动展开 / 折叠过的按你的来（记在 ytos.nav 里）
-  const nbOpen = (id) => (navOpen['nb:' + id] === undefined ? !!(curNoteNb && curNoteNb === id) : navOpen['nb:' + id] !== false);
+  const nbOpen = (id) => navOpen['nb:' + id] !== false; // 默认全部展开；你收起过的记住（ytos.nav）
   const toggleNb = (id) => setNavOpen((o) => { const n = { ...o, ['nb:' + id]: !nbOpen(id) }; try { localStorage.setItem('ytos.nav', JSON.stringify(n)); } catch {} return n; });
   const nbHas = (id) => s.notes.some((n) => n.nb === id);
   const curNote = route.path === 'notes' ? s.notes.find((n) => n.id === route.sub) : null;
