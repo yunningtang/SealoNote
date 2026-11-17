@@ -5088,3 +5088,13 @@ html.is-pet body{margin:0}
 .rt-it svg{width:60px;height:46px}
 .room-wrap{padding:14px 16px;background:linear-gradient(180deg,#f7f5f0,#efece5);border-radius:0 0 12px 12px}
 .pet.room-mode{height:400px}
+/* 桌面汤圆：定格画 + 很轻的 CSS 动画（呼吸、放下时弹一下），不占显卡 */
+.pet-doll-w{transition:transform .12s ease-out;transform-origin:50% 90%}
+img.pet-doll{display:block;width:190px;height:190px;user-select:none;-webkit-user-drag:none;animation:pet-breathe 3.4s ease-in-out infinite}
+img.pet-doll.drop{animation:pet-drop .55s cubic-bezier(.3,1.6,.5,1),pet-breathe 3.4s ease-in-out .55s infinite}
+@keyframes pet-breathe{0%,100%{transform:translateY(0) scaleY(1)}50%{transform:translateY(-2px) scaleY(1.012)}}
+@keyframes pet-drop{0%{transform:translateY(-10px) scale(.96,1.06)}55%{transform:translateY(0) scale(1.06,.94)}100%{transform:none}}
+@media (prefers-reduced-motion:reduce){img.pet-doll{animation:none}}
+.pet .pet-stage{height:auto;min-height:0;place-items:end center}
+.room-seal img.pet-doll{width:100%;height:auto}
+.pet-dress-prev img.pet-doll{width:170px;height:170px}

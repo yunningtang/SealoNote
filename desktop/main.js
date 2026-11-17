@@ -182,6 +182,8 @@ function createPet() {
   const at = cfg.pet && onScreen({ ...cfg.pet, width: PET_W, height: PET_H }) ? cfg.pet : defaultPetPos();
   const k = petScale(); const [pw, ph] = petDims(k); pet = new BrowserWindow({ x: at.x, y: at.y, width: pw, height: ph, frame: false, transparent: true, backgroundColor: '#00000000', hasShadow: false, resizable: false, maximizable: false, minimizable: false, fullscreenable: false, skipTaskbar: true, show: false, title: '汤圆', icon: ICON, webPreferences: { ...webPrefs(), backgroundThrottling: false, zoomFactor: k } });
   pet.setAlwaysOnTop(true, 'floating'); pet.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: false });
+  // 透明的地方点下去穿到后面去：先整窗穿透（鼠标移动照样转给网页），鼠标到了汤圆身上网页再说一声「接住」（Linux 不支持转发，就不穿透）
+  if (process.platform !== 'linux') pet.setIgnoreMouseEvents(true, { forward: true });
   guard(pet);
   pet.once('ready-to-show', () => { pet.webContents.setZoomFactor(petScale()); pet.showInactive(); });
   pet.on('close', (e) => { if (!quitting) { e.preventDefault(); hidePet(); } });
@@ -303,6 +305,7 @@ else {
     ipcMain.handle('pet:stats', () => keyStats());
     ipcMain.handle('pet:setScale', (_e, k) => setPetScale(k));
     ipcMain.handle('pet:setRoom', (_e, on) => setPetRoom(on));
+    ipcMain.on('pet:hit', (_e, hit) => { if (pet && !pet.isDestroyed() && process.platform !== 'linux') pet.setIgnoreMouseEvents(!hit, { forward: true }); });
     ipcMain.handle('pet:setCount', (_e, on) => { cfg.countKeys = !!on; saveCfg(); if (on) { if (MAC && !systemPreferences.isTrustedAccessibilityClient(true)) { keysErr = 'needs-permission'; return keyStats(); } startKeys(); } else stopKeys(); return keyStats(); });
     ipcMain.handle('titlebar:set', () => {}); // 0.2 的网页还会调；现在按钮由网页自己画
 
