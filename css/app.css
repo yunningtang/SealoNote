@@ -5080,3 +5080,11 @@ html.is-pet body{margin:0}
 .pet.room-mode{width:380px;height:360px;padding:6px 10px 8px}
 .pet.room-mode .room{flex:none}
 .pet.room-mode .pet-keys{margin-top:6px}
+/* 等轴测房间：没有外框，直接是一个立体的屋角 */
+.room{aspect-ratio:360/300;border-radius:0;box-shadow:none;overflow:visible;background:transparent}
+.room-seal{width:27%}
+.room-front{pointer-events:none}.room-front .room-it{pointer-events:auto}
+.room-it.dragging{filter:drop-shadow(0 8px 8px rgba(0,0,0,.2))}
+.rt-it svg{width:60px;height:46px}
+.room-wrap{padding:14px 16px;background:linear-gradient(180deg,#f7f5f0,#efece5);border-radius:0 0 12px 12px}
+.pet.room-mode{height:400px}

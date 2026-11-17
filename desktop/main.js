@@ -191,7 +191,7 @@ function createPet() {
 }
 const petScale = () => Math.max(.6, Math.min(1.8, Number(cfg.petScale) || 1));
 // 变大变小：窗口跟着缩放，汤圆脚下那一点不动（底边中间对齐）
-const ROOM_W = 380, ROOM_H = 360;
+const ROOM_W = 380, ROOM_H = 400;
 const petDims = (k = petScale()) => (cfg.petRoom ? [ROOM_W, ROOM_H] : [PET_W, PET_H]).map((v) => Math.round(v * k));
 // 打开 / 关上房间：窗口变大变小，脚下那一点不动
 function setPetRoom(on) {
