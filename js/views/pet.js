@@ -18,43 +18,45 @@ export const setPetLook = (patch) => update((d) => { d.settings.pet = { ...petLo
 function dress(THREE, m, look) {
   const old = m.__dress || []; old.forEach((o) => o.parent && o.parent.remove(o)); m.__dress = [];
   const add = (parent, o) => { parent.add(o); m.__dress.push(o); return o; };
-  const mat = (c, extra = {}) => new THREE.MeshPhysicalMaterial({ color: c, roughness: .7, ...extra });
-  const top = m.head.position.y + m.HR * .97; // 头顶（headPiv 坐标）
+  // 汤圆身上有一层毛（往外大约 0.08）：衣服要穿在毛外面，不然被毛盖住、颜色发白
+  const mat = (c, extra = {}) => new THREE.MeshStandardMaterial({ color: c, roughness: .62, envMapIntensity: .35, ...extra });
+  const OUT = m.HR + .14;
+  const top = m.head.position.y + OUT * .97; // 头顶（headPiv 坐标）
   if (look.hat === 'beanie') {
     const g = new THREE.Group(); g.position.set(0, m.head.position.y, m.head.position.z);
-    const cap = new THREE.Mesh(new THREE.SphereGeometry(m.HR * 1.06, 48, 24, 0, Math.PI * 2, 0, Math.PI * .36), mat(0xd2524f)); cap.rotation.x = -.18; g.add(cap);
-    const band = new THREE.Mesh(new THREE.TorusGeometry(m.HR * .86, .09, 16, 48), mat(0xf3efe6)); band.rotation.x = Math.PI / 2 - .18; band.position.y = m.HR * .5; band.position.z = -.06; g.add(band);
-    const pom = new THREE.Mesh(new THREE.SphereGeometry(.18, 24, 16), mat(0xf3efe6)); pom.position.set(0, m.HR * 1.08, -.2); g.add(pom);
+    const cap = new THREE.Mesh(new THREE.SphereGeometry(OUT, 48, 24, 0, Math.PI * 2, 0, Math.PI * .36), mat(0xc9302c)); cap.rotation.x = -.18; g.add(cap);
+    const band = new THREE.Mesh(new THREE.TorusGeometry(OUT * .87, .1, 16, 48), mat(0xf6f1e7)); band.rotation.x = Math.PI / 2 - .18; band.position.y = OUT * .5; band.position.z = -.06; g.add(band);
+    const pom = new THREE.Mesh(new THREE.SphereGeometry(.18, 24, 16), mat(0xf3efe6)); pom.position.set(0, OUT * 1.06, -.2); g.add(pom);
     add(m.headPiv, g);
   } else if (look.hat === 'bow') {
-    const g = new THREE.Group(); g.position.set(.42, top - .12, m.head.position.z + .05); g.rotation.z = -.35;
-    const red = mat(0xe0577b, { clearcoat: .4 });
-    [-1, 1].forEach((sx) => { const w = new THREE.Mesh(new THREE.ConeGeometry(.16, .3, 24), red); w.rotation.z = sx * Math.PI / 2; w.position.x = sx * .15; g.add(w); });
-    g.add(new THREE.Mesh(new THREE.SphereGeometry(.07, 16, 12), red));
+    const g = new THREE.Group(); g.position.set(.5, top - .14, m.head.position.z + .12); g.rotation.z = -.35;
+    const red = mat(0xe03a6a);
+    [-1, 1].forEach((sx) => { const w = new THREE.Mesh(new THREE.ConeGeometry(.2, .36, 24), red); w.rotation.z = sx * Math.PI / 2; w.position.x = sx * .18; g.add(w); });
+    g.add(new THREE.Mesh(new THREE.SphereGeometry(.09, 16, 12), red));
     add(m.headPiv, g);
   } else if (look.hat === 'crown') {
-    const gold = new THREE.MeshPhysicalMaterial({ color: 0xf2c14e, metalness: .85, roughness: .25, clearcoat: .6 });
-    const g = new THREE.Group(); g.position.set(0, top - .06, m.head.position.z - .05); g.rotation.x = -.12;
-    g.add(new THREE.Mesh(new THREE.CylinderGeometry(.36, .4, .18, 32, 1, true), gold));
-    for (let i = 0; i < 5; i++) { const a = (i / 5) * Math.PI * 2; const c = new THREE.Mesh(new THREE.ConeGeometry(.07, .2, 12), gold); c.position.set(Math.sin(a) * .37, .17, Math.cos(a) * .37); g.add(c); }
+    const gold = new THREE.MeshStandardMaterial({ color: 0xe8aa1c, metalness: .6, roughness: .3, envMapIntensity: .9 });
+    const g = new THREE.Group(); g.position.set(0, top - .02, m.head.position.z - .05); g.rotation.x = -.12;
+    g.add(new THREE.Mesh(new THREE.CylinderGeometry(.4, .44, .2, 32, 1, true), gold));
+    for (let i = 0; i < 5; i++) { const a = (i / 5) * Math.PI * 2; const c = new THREE.Mesh(new THREE.ConeGeometry(.07, .2, 12), gold); c.position.set(Math.sin(a) * .41, .18, Math.cos(a) * .41); g.add(c); }
     add(m.headPiv, g);
   } else if (look.hat === 'phones') {
-    const dark = mat(0x2b2d33, { clearcoat: .5 });
+    const dark = mat(0x26282d);
     const g = new THREE.Group(); g.position.set(0, m.head.position.y, m.head.position.z - .05);
-    const arc = new THREE.Mesh(new THREE.TorusGeometry(m.HR * 1.08, .06, 12, 48, Math.PI), dark); g.add(arc);
-    [-1, 1].forEach((sx) => { const cup = new THREE.Mesh(new THREE.CylinderGeometry(.22, .22, .16, 28), mat(0x4f7cf5)); cup.rotation.z = Math.PI / 2; cup.position.set(sx * m.HR * 1.06, 0, 0); g.add(cup); });
+    const arc = new THREE.Mesh(new THREE.TorusGeometry(OUT * 1.02, .07, 12, 48, Math.PI), dark); g.add(arc);
+    [-1, 1].forEach((sx) => { const cup = new THREE.Mesh(new THREE.CylinderGeometry(.24, .24, .2, 28), mat(0x2f62e0)); cup.rotation.z = Math.PI / 2; cup.position.set(sx * OUT * 1.02, 0, 0); g.add(cup); });
     add(m.headPiv, g);
   }
   if (look.glasses) {
-    const dark = mat(0x1b1d21, { roughness: .4 });
-    m.eyes.forEach((e) => { const r = new THREE.Mesh(new THREE.TorusGeometry(.17, .025, 10, 32), dark); r.position.set(0, 0, .04); add(e, r); });
+    const dark = mat(0x111214, { roughness: .4 });
+    m.eyes.forEach((e) => { const r = new THREE.Mesh(new THREE.TorusGeometry(.18, .032, 10, 32), dark); r.position.set(0, 0, .12); add(e, r); });
     const bridge = new THREE.Mesh(new THREE.CylinderGeometry(.018, .018, .3, 8), dark); bridge.rotation.z = Math.PI / 2;
-    const a = m.eyes[0].position, b = m.eyes[1].position; bridge.position.set((a.x + b.x) / 2, (a.y + b.y) / 2 + .03, (a.z + b.z) / 2 + .05); add(m.headPiv, bridge);
+    const a = m.eyes[0].position, b = m.eyes[1].position; bridge.position.set((a.x + b.x) / 2, (a.y + b.y) / 2 + .03, (a.z + b.z) / 2 + .14); add(m.headPiv, bridge);
   }
   if (look.scarf) {
     const g = new THREE.Group(); g.position.set(0, m.headPiv.position.y - .3, m.headPiv.position.z + .02); g.rotation.x = Math.PI / 2 - .25;
-    g.add(new THREE.Mesh(new THREE.TorusGeometry(.66, .13, 16, 48), mat(look.scarf)));
-    const tail = new THREE.Mesh(new THREE.BoxGeometry(.22, .5, .08), mat(look.scarf)); tail.position.set(.32, .55, -.05); tail.rotation.z = -.2; g.add(tail);
+    g.add(new THREE.Mesh(new THREE.TorusGeometry(.76, .15, 16, 48), mat(look.scarf)));
+    const tail = new THREE.Mesh(new THREE.BoxGeometry(.24, .52, .09), mat(look.scarf)); tail.position.set(.36, .62, -.08); tail.rotation.z = -.2; g.add(tail);
     add(m.rig, g);
   }
 }
@@ -115,13 +117,15 @@ export default function Pet({ preview = false }) {
   const say = (t) => { setMsg(t); clearTimeout(say.t); say.t = setTimeout(() => setMsg(''), 2600); };
   // 按住拖 = 挪窗口；往上一甩 = 打开便签；不动 = 点了一下
   const drag = useRef(null);
-  const down = (e) => { if (e.button !== 0 || e.target.closest('.pet-menu,.pet-pomo')) return; drag.current = { x: e.screenX, y: e.screenY, sx: e.screenX, sy: e.screenY, t: performance.now() }; e.currentTarget.setPointerCapture(e.pointerId); };
-  const move = (e) => { const d = drag.current; if (!d) return; const dx = e.screenX - d.x, dy = e.screenY - d.y; if (!dx && !dy) return; d.x = e.screenX; d.y = e.screenY; if (desk) desk.moveBy(dx, dy); };
+  const down = (e) => { if (e.button !== 0 || e.target.closest('.pet-menu,.pet-pomo')) return; drag.current = { x: e.screenX, y: e.screenY, sx: e.screenX, sy: e.screenY, t: performance.now(), trail: [[performance.now(), e.screenX, e.screenY]] }; e.currentTarget.setPointerCapture(e.pointerId); };
+  const move = (e) => { const d = drag.current; if (!d) return; const dx = e.screenX - d.x, dy = e.screenY - d.y; if (!dx && !dy) return; d.x = e.screenX; d.y = e.screenY; d.trail.push([performance.now(), e.screenX, e.screenY]); if (d.trail.length > 12) d.trail.shift(); if (desk) desk.moveBy(dx, dy); };
   const up = (e) => {
     const d = drag.current; drag.current = null; if (!d) return;
     const tx = e.screenX - d.sx, ty = e.screenY - d.sy, dt = performance.now() - d.t;
     if (Math.abs(tx) < 4 && Math.abs(ty) < 4) { setMenu((m) => !m); return; }
-    if (ty < -50 && Math.abs(tx) < 60 && dt < 320) { if (desk) desk.moveBy(-tx, -ty); tapAt.current = performance.now(); openSticky(); }
+    // 甩：松手前那一小段往上走得很快（不是慢慢拖上去）
+    const now = performance.now(); const tr = d.trail.filter(([t]) => now - t < 140); const [t0, x0, y0] = tr[0] || d.trail[0]; const vy = (e.screenY - y0) / Math.max(16, now - t0), vx = (e.screenX - x0) / Math.max(16, now - t0);
+    if (ty < -40 && vy < -.55 && Math.abs(vx) < Math.abs(vy) && dt < 700) { if (desk) desk.moveBy(-tx, -ty); tapAt.current = performance.now(); openSticky(); }
   };
   const openSticky = () => { if (window.sealonote && window.sealonote.showSticky) window.sealonote.showSticky(); else location.hash = '#/sticky'; say('便签打开啦'); };
   const remain = st.phase !== 'idle' ? pomo.remaining() : 0; const total = (st.phase === 'break' ? st.breakLen : st.workLen) * 60; const frac = total ? Math.min(1, Math.max(0, 1 - remain / total)) : 0; const C = 2 * Math.PI * 15;
