@@ -42,7 +42,7 @@
       ],
       "category": "public.app-category.productivity",
       "identity": null,
-      "x64ArchFiles": "**/node_modules/uiohook-napi/prebuilds/**"
+      "x64ArchFiles": "**/node_modules/uiohook-napi/**"
     },
     "win": {
       "target": [
@@ -73,7 +73,8 @@
     },
     "asarUnpack": [
       "**/*.node"
-    ]
+    ],
+    "npmRebuild": false
   },
   "dependencies": {
     "uiohook-napi": "1.5.5"
