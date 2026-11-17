@@ -11,10 +11,10 @@ import * as pomo from '../pomo.js';
 export const HATS = [['', '不戴'], ['beanie', '毛线帽'], ['bow', '蝴蝶结'], ['crown', '小皇冠'], ['phones', '耳机']];
 export const SCARVES = [['', '不戴'], ['#d2524f', '红'], ['#4f7cf5', '蓝'], ['#4a9a6a', '绿'], ['#e0a23c', '黄'], ['#8a63c9', '紫']];
 export const HOUSES = [['', '不要'], ['igloo', '冰屋'], ['cushion', '软垫'], ['desk', '书桌'], ['beach', '沙滩']];
-export const petLook = (s) => ({ hat: '', scarf: '', glasses: false, house: 'igloo', ...((s && s.settings && s.settings.pet) || {}) });
+export const petLook = (s) => ({ hat: '', scarf: '', house: 'igloo', ...((s && s.settings && s.settings.pet) || {}) });
 export const setPetLook = (patch) => update((d) => { d.settings.pet = { ...petLook(d), ...patch }; });
 
-// 往 3D 汤圆身上挂东西：帽子 / 眼镜挂在头上，围巾挂在脖子上
+// 往 3D 汤圆身上挂东西：帽子挂在头上，围巾挂在脖子上
 function dress(THREE, m, look) {
   const old = m.__dress || []; old.forEach((o) => o.parent && o.parent.remove(o)); m.__dress = [];
   const add = (parent, o) => { parent.add(o); m.__dress.push(o); return o; };
@@ -46,12 +46,6 @@ function dress(THREE, m, look) {
     const arc = new THREE.Mesh(new THREE.TorusGeometry(OUT * 1.02, .07, 12, 48, Math.PI), dark); g.add(arc);
     [-1, 1].forEach((sx) => { const cup = new THREE.Mesh(new THREE.CylinderGeometry(.24, .24, .2, 28), mat(0x2f62e0)); cup.rotation.z = Math.PI / 2; cup.position.set(sx * OUT * 1.02, 0, 0); g.add(cup); });
     add(m.headPiv, g);
-  }
-  if (look.glasses) {
-    const dark = mat(0x111214, { roughness: .4 });
-    m.eyes.forEach((e) => { const r = new THREE.Mesh(new THREE.TorusGeometry(.18, .032, 10, 32), dark); r.position.set(0, 0, .12); add(e, r); });
-    const bridge = new THREE.Mesh(new THREE.CylinderGeometry(.018, .018, .3, 8), dark); bridge.rotation.z = Math.PI / 2;
-    const a = m.eyes[0].position, b = m.eyes[1].position; bridge.position.set((a.x + b.x) / 2, (a.y + b.y) / 2 - .01, (a.z + b.z) / 2 + .1); add(m.headPiv, bridge);
   }
   if (look.scarf) {
     const g = new THREE.Group(); g.position.set(0, m.headPiv.position.y - .3, m.headPiv.position.z + .02); g.rotation.x = Math.PI / 2 - .25;
