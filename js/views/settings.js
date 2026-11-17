@@ -13,6 +13,7 @@ import { aiConfig, setAiConfig, aiHeaders, usageOf, clearUsage, estimateCost } f
 import { ctxMenu } from '../ctx.js';
 import { trashPages } from './notes.js';
 import { PROMPT_VARS, newPrompt, fillVars } from '../prompts.js';
+import Pet, { HATS, SCARVES, HOUSES, petLook, setPetLook } from './pet.js';
 
 export async function uploadAvatar(file) {
   try {
@@ -306,6 +307,17 @@ export default function Settings() {
         <${Row} icon="right" label="闲时贴边" hint="没人理时缩到屏幕边"><${Switch} label="闲时贴边" on=${s.settings.sealTuck === true} onChange=${(v) => update((d) => { d.settings.sealTuck = v; })} /><//>
         <${Row} icon="sparkle" label="光效"><${Switch} label="光效" on=${s.settings.sealGlow !== false} onChange=${(v) => update((d) => { d.settings.sealGlow = v; })} /><//>
         <${Row} icon="star" label="强调色"><${Seg} options=${[{ v: 'none', label: '黑白' }, { v: 'ice', label: '冰蓝' }, { v: 'teal', label: '青绿' }]} value=${s.settings.sealAccent || 'none'} onChange=${(v) => update((d) => { d.settings.sealAccent = v; })} /><//>
+      <//>
+      <${Group} title="桌面汤圆">
+        <div class="pet-dress">
+          <div class="pet-dress-prev"><${Pet} preview=${true} /></div>
+          <div class="pet-dress-opts">
+            ${[['帽子', 'hat', HATS], ['围巾', 'scarf', SCARVES], ['小屋', 'house', HOUSES]].map(([label, k, opts]) => html`<div class="pd-row" key=${k}><b>${label}</b><div class="pd-chips">${opts.map(([v, l]) => html`<button type="button" key=${v} class=${'pd-chip ' + (petLook(s)[k] === v ? 'on' : '')} style=${k === 'scarf' && v ? `--sw:${v}` : ''} onClick=${() => setPetLook({ [k]: v })}>${k === 'scarf' && v ? html`<i></i>` : ''}${l}</button>`)}</div></div>`)}
+            <div class="pd-row"><b>眼镜</b><div class="pd-chips"><button type="button" class=${'pd-chip ' + (!petLook(s).glasses ? 'on' : '')} onClick=${() => setPetLook({ glasses: false })}>不戴</button><button type="button" class=${'pd-chip ' + (petLook(s).glasses ? 'on' : '')} onClick=${() => setPetLook({ glasses: true })}>圆框眼镜</button></div></div>
+            <p class="small muted">桌面版里汤圆会坐在桌面上：你打字它跟着拍鳍，下面写着今天敲了几下（只数次数，不记内容）；番茄钟在走时头顶有计时环。按住拖可以挪位置，往上一甩打开便签，点一下出菜单。托盘里可以开关。换的装扮跟着账号同步。</p>
+            ${window.sealonote && window.sealonote.pet ? html`<div class="row" style="gap:8px"><button class="sx-btn" onClick=${() => window.sealonote.pet.show()}>显示桌面汤圆</button><button class="sx-btn" onClick=${() => window.sealonote.pet.hide()}>收起</button></div>` : window.sealonote && window.sealonote.desktop ? html`<p class="small muted">要用桌面汤圆，请安装 0.6 或更新的桌面版。</p>` : ''}
+          </div>
+        </div>
       <//>
     <//>`,
     ai: () => html`<${Page} title="AI" sub=${login && login.ai ? `当前模型 ${login.aiModel || '服务器配置'}` : '汤圆用来理解你说的话'}>

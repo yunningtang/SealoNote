@@ -1,8 +1,8 @@
 {
   "name": "sealonote-desktop",
   "productName": "Sealonote",
-  "version": "0.5.2",
-  "description": "Sealonote 桌面版：和网页版同一个账号、同一份数据，外加可以贴在桌面上的便签",
+  "version": "0.6.0",
+  "description": "Sealonote 桌面版：和网页版同一个账号、同一份数据，外加可以贴在桌面上的便签和桌面汤圆",
   "author": "yunningtang",
   "license": "UNLICENSED",
   "private": true,
@@ -19,13 +19,63 @@
     "appId": "com.sealonote.desktop",
     "productName": "Sealonote",
     "artifactName": "SealoNote-${os}-${arch}.${ext}",
-    "directories": { "buildResources": "build", "output": "dist" },
-    "files": ["main.js", "preload.js", "icon.png", "tray.png", "package.json"],
+    "directories": {
+      "buildResources": "build",
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "icon.png",
+      "tray.png",
+      "package.json"
+    ],
     "icon": "icon.png",
-    "mac": { "target": [{ "target": "dmg", "arch": ["universal"] }], "category": "public.app-category.productivity", "identity": null },
-    "win": { "target": [{ "target": "nsis", "arch": ["x64"] }] },
-    "nsis": { "oneClick": false, "allowToChangeInstallationDirectory": true, "perMachine": false },
-    "linux": { "target": ["AppImage"], "category": "Office" },
-    "publish": { "provider": "github", "owner": "yunningtang", "repo": "SealoNote", "releaseType": "release" }
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "universal"
+          ]
+        }
+      ],
+      "category": "public.app-category.productivity",
+      "identity": null,
+      "x64ArchFiles": "**/node_modules/uiohook-napi/prebuilds/**"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "perMachine": false
+    },
+    "linux": {
+      "target": [
+        "AppImage"
+      ],
+      "category": "Office"
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "yunningtang",
+      "repo": "SealoNote",
+      "releaseType": "release"
+    },
+    "asarUnpack": [
+      "**/*.node"
+    ]
+  },
+  "dependencies": {
+    "uiohook-napi": "1.5.5"
   }
 }

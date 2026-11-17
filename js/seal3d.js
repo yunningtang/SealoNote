@@ -135,5 +135,6 @@ export function buildSeal(THREE, cv, size = 150) {
   const shadowMesh = new THREE.Mesh(new THREE.PlaneGeometry(3.4, 3.4), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(sc), transparent: true, depthWrite: false }));
   shadowMesh.rotation.x = -Math.PI / 2; shadowMesh.position.y = -.97; shadowMesh.scale.set(1.15, .62, 1); scene.add(shadowMesh);
 
-  return { renderer, scene, camera, seal, eyes, flips, tailPiv, headPiv, shadowMesh, dispose() { renderer.dispose(); } };
+  // head / HR / rig 给桌面汤圆挂帽子、围巾、眼镜用
+  return { renderer, scene, camera, seal, rig, head, HR, eyes, flips, tailPiv, headPiv, shadowMesh, dispose() { renderer.dispose(); } };
 }

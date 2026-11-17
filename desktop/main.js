@@ -4,8 +4,9 @@
 //  · 便签（#/sticky）：今天的焦点和安排 / 便利贴，可以置顶、调透明度
 //  · 单张便利贴（#/sticky?note=<id>）：一页笔记贴在桌面上，可以开好几张，各自记位置和大小
 //  · 汤圆（#/seal）：AI 对话单独一个窗口
+//  · 桌面汤圆（#/pet）：透明的小窗口，汤圆坐在桌面上，跟着你打字拍鳍、显示番茄钟；只数按键次数，不记按了什么
 // Windows / Linux 上所有窗口都没有系统标题栏：网页自己画标题栏和最小化 / 最大化 / 关闭按钮，和界面融在一起。
-const { app, BrowserWindow, Tray, Menu, shell, ipcMain, nativeImage, screen, session } = require('electron');
+const { app, BrowserWindow, Tray, Menu, shell, ipcMain, nativeImage, screen, session, systemPreferences } = require('electron');
 const path = require('path');
 const fs = require('fs');
 
@@ -21,7 +22,7 @@ const ICON = path.join(__dirname, 'icon.png');
 app.commandLine.appendSwitch('ignore-gpu-blocklist');
 app.commandLine.appendSwitch('enable-unsafe-swiftshader');
 
-let main = null, sticky = null, ai = null, tray = null, quitting = false;
+let main = null, sticky = null, ai = null, pet = null, tray = null, quitting = false;
 const notes = new Map(); // noteId → BrowserWindow
 
 // ---- 设置（窗口位置、便签是否置顶 / 是否开着、开机启动）----
@@ -172,6 +173,42 @@ function showAI() {
   refreshTray();
 }
 
+/* ---------- 桌面汤圆 ---------- */
+const PET_W = 220, PET_H = 300;
+function defaultPetPos() { const w = screen.getPrimaryDisplay().workArea; return { x: w.x + w.width - PET_W - 24, y: w.y + w.height - PET_H - 8 }; }
+function createPet() {
+  const at = cfg.pet && onScreen({ ...cfg.pet, width: PET_W, height: PET_H }) ? cfg.pet : defaultPetPos();
+  pet = new BrowserWindow({ x: at.x, y: at.y, width: PET_W, height: PET_H, frame: false, transparent: true, backgroundColor: '#00000000', hasShadow: false, resizable: false, maximizable: false, minimizable: false, fullscreenable: false, skipTaskbar: true, show: false, title: '汤圆', icon: ICON, webPreferences: webPrefs() });
+  pet.setAlwaysOnTop(true, 'floating'); pet.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: false });
+  guard(pet);
+  pet.once('ready-to-show', () => pet.showInactive());
+  pet.on('close', (e) => { if (!quitting) { e.preventDefault(); hidePet(); } });
+  pet.on('closed', () => { pet = null; });
+  load(pet, '#/pet');
+  startKeys();
+}
+function showPet() { cfg.petOn = true; saveCfg(); if (!pet || pet.isDestroyed()) createPet(); else pet.showInactive(); refreshTray(); }
+function hidePet() { if (pet && !pet.isDestroyed()) pet.hide(); cfg.petOn = false; saveCfg(); refreshTray(); }
+
+// 数按键：只在这里加一，按的是哪个键不存、不传。按住不放（自动重复）只算一下
+const day = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+let hook = null, keysErr = '', lastSend = 0; const down = new Set();
+function keyStats() { const k = cfg.keys || {}; const today = k[day()] || 0; const total = Object.values(k).reduce((a, b) => a + b, 0); return { today, total, on: cfg.countKeys !== false, running: !!hook, needsPermission: MAC && !systemPreferences.isTrustedAccessibilityClient(false), error: keysErr }; }
+function onKey(e) {
+  if (down.has(e.keycode)) return; down.add(e.keycode);
+  cfg.keys = cfg.keys || {}; const d = day(); cfg.keys[d] = (cfg.keys[d] || 0) + 1;
+  const keep = Object.keys(cfg.keys).sort().slice(-400); if (keep.length < Object.keys(cfg.keys).length) cfg.keys = Object.fromEntries(keep.map((k) => [k, cfg.keys[k]]));
+  saveCfg();
+  const now = Date.now(); if (pet && !pet.isDestroyed() && now - lastSend > 45) { lastSend = now; pet.webContents.send('pet:key', { today: cfg.keys[d] }); }
+}
+function startKeys() {
+  if (hook || cfg.countKeys === false) return;
+  if (MAC && !systemPreferences.isTrustedAccessibilityClient(false)) { keysErr = 'needs-permission'; return; } // macOS 要先在「辅助功能」里允许
+  try { const { uIOhook } = require('uiohook-napi'); uIOhook.on('keydown', onKey); uIOhook.on('keyup', (e) => down.delete(e.keycode)); uIOhook.start(); hook = uIOhook; keysErr = ''; }
+  catch (err) { hook = null; keysErr = String((err && err.message) || err); }
+}
+function stopKeys() { if (hook) { try { hook.stop(); } catch {} hook = null; } }
+
 function setPin(win, on) { if (win && !win.isDestroyed()) win.setAlwaysOnTop(!!on, 'floating'); }
 
 function refreshTray() {
@@ -182,11 +219,12 @@ function refreshTray() {
     { label: '打开 Sealonote', click: () => showMain() },
     { label: '汤圆（AI 对话）', click: () => showAI() },
     { label: stickyShown ? '收起便签' : '显示便签', click: () => (stickyShown ? hideSticky() : showSticky()) },
+    { label: '桌面汤圆', type: 'checkbox', checked: !!(pet && !pet.isDestroyed() && pet.isVisible()), click: (i) => (i.checked ? showPet() : hidePet()) },
     { label: '便签置顶', type: 'checkbox', checked: cfg.stickyPin !== false, click: (i) => { cfg.stickyPin = i.checked; saveCfg(); setPin(sticky, i.checked); } },
     ...(MAC ? [{ label: '便签在所有桌面上都显示', type: 'checkbox', checked: !!cfg.stickyAllSpaces, click: (i) => { cfg.stickyAllSpaces = i.checked; saveCfg(); if (sticky && !sticky.isDestroyed()) sticky.setVisibleOnAllWorkspaces(i.checked); } }] : []),
     { type: 'separator' },
     { label: '开机时启动（只开便签）', type: 'checkbox', checked: !!login.openAtLogin, click: (i) => { app.setLoginItemSettings({ openAtLogin: i.checked, args: ['--sticky-only'] }); refreshTray(); } },
-    { label: '刷新', click: () => { [main, sticky, ai, ...notes.values()].forEach((w) => w && !w.isDestroyed() && w.webContents.reload()); } },
+    { label: '刷新', click: () => { [main, sticky, ai, pet, ...notes.values()].forEach((w) => w && !w.isDestroyed() && w.webContents.reload()); } },
     { type: 'separator' },
     { label: '退出', click: () => { quitting = true; app.quit(); } },
   ]));
@@ -239,6 +277,11 @@ else {
     ipcMain.handle('ai:getPin', () => !!cfg.aiPin);
     ipcMain.handle('ai:setPin', (_e, on) => { cfg.aiPin = !!on; saveCfg(); setPin(ai, on); return !!on; });
     ipcMain.handle('main:open', (_e, hash) => { showMain(typeof hash === 'string' ? hash : ''); });
+    ipcMain.handle('pet:show', () => { showPet(); });
+    ipcMain.handle('pet:hide', () => { hidePet(); });
+    ipcMain.on('pet:moveBy', (_e, dx, dy) => { if (!pet || pet.isDestroyed()) return; const [x, y] = pet.getPosition(); const nx = x + (dx | 0), ny = y + (dy | 0); pet.setPosition(nx, ny); cfg.pet = { x: nx, y: ny }; saveCfg(); });
+    ipcMain.handle('pet:stats', () => keyStats());
+    ipcMain.handle('pet:setCount', (_e, on) => { cfg.countKeys = !!on; saveCfg(); if (on) { if (MAC && !systemPreferences.isTrustedAccessibilityClient(true)) { keysErr = 'needs-permission'; return keyStats(); } startKeys(); } else stopKeys(); return keyStats(); });
     ipcMain.handle('titlebar:set', () => {}); // 0.2 的网页还会调；现在按钮由网页自己画
 
     appMenu(); createTray();
@@ -246,9 +289,10 @@ else {
     if (!stickyOnly) createMain();
     if (stickyOnly || cfg.stickyOpen !== false) createSticky();
     if (stickyOnly && cfg.stickyOpen === false) showSticky();
+    if (cfg.petOn !== false) createPet(); // 桌面汤圆默认开着，托盘里可以关
     Object.entries(cfg.notes).forEach(([id, n]) => { if (n && n.open) showNote(id); });
   });
   app.on('activate', () => showMain());
-  app.on('before-quit', () => { quitting = true; });
+  app.on('before-quit', () => { quitting = true; stopKeys(); });
   app.on('window-all-closed', () => { if (!MAC) app.quit(); });
 }

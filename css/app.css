@@ -5020,3 +5020,35 @@ html,body{-ms-overflow-style:none}
 .day-add{display:flex;align-items:center;gap:6px;width:100%;margin-top:6px;padding:7px 8px;border:0;border-radius:var(--r2);background:transparent;color:var(--text-4);font-size:.82rem;cursor:pointer;text-align:left}
 .day-add:hover{background:var(--hover);color:var(--text)}
 .day-add.sm{margin:2px 0 0;padding:4px 10px;font-size:.74rem}
+/* ---- 桌面汤圆（#/pet）：透明窗口，只有汤圆、它的小屋、番茄钟和今天敲了几下 ---- */
+html.is-pet,html.is-pet body,html.is-pet #app{background:transparent!important;overflow:hidden;user-select:none;-webkit-user-select:none}
+html.is-pet body{margin:0}
+.pet{position:relative;width:220px;height:300px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding-bottom:10px;box-sizing:border-box;cursor:grab;font:13px/1.3 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif}
+.pet:active{cursor:grabbing}
+.pet-stage{position:relative;width:220px;height:200px;display:grid;place-items:end center}
+.pet-stage canvas{position:relative;z-index:1;width:190px;height:190px;margin-bottom:6px}
+.pet-house{position:absolute;left:0;bottom:0;width:220px;height:120px;z-index:0}
+.pet.has-house .pet-stage canvas{margin-bottom:14px}
+.pet-keys{margin-top:2px;padding:3px 10px;border-radius:999px;background:rgba(255,255,255,.86);color:#5f5e5a;font-size:11.5px;box-shadow:0 1px 6px rgba(0,0,0,.12);min-height:16px}
+.pet-keys:empty{visibility:hidden}.pet-keys b{color:#1f1e1c;font-variant-numeric:tabular-nums}
+.pet-say{min-height:30px;margin-bottom:2px;padding:6px 12px;border-radius:14px;background:#fff;color:#1f1e1c;font-size:12.5px;box-shadow:0 2px 10px rgba(0,0,0,.14);position:relative}
+.pet-say.ghost{visibility:hidden}
+.pet-say::after{content:"";position:absolute;left:50%;bottom:-5px;margin-left:-5px;border:5px solid transparent;border-top-color:#fff;border-bottom:0}
+.pet-pomo{display:flex;align-items:center;gap:8px;margin-bottom:2px;padding:4px 12px 4px 5px;border:0;border-radius:999px;background:rgba(255,255,255,.94);box-shadow:0 2px 10px rgba(0,0,0,.14);cursor:pointer;font:inherit;color:#1f1e1c}
+.pet-pomo b{font-size:15px;font-variant-numeric:tabular-nums}.pet-pomo small{color:#8e8d88;font-size:11px;max-width:72px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pet-pomo svg{transform:rotate(-90deg)}.pet-pomo .tr{fill:none;stroke:#ecebe7;stroke-width:4}.pet-pomo .fg{fill:none;stroke:#e0894f;stroke-width:4;stroke-linecap:round;transition:stroke-dashoffset 1s linear}
+.pet-pomo.break .fg{stroke:#4a9a6a}.pet-pomo.paused{opacity:.75}.pet-pomo.paused .fg{stroke:#9b9a97}
+.pet-menu{position:absolute;left:50%;top:8px;transform:translateX(-50%);z-index:5;display:flex;flex-direction:column;min-width:150px;padding:5px;border-radius:12px;background:rgba(255,255,255,.97);box-shadow:0 6px 24px rgba(0,0,0,.2);cursor:default}
+.pet-menu button{border:0;background:none;text-align:left;padding:7px 10px;border-radius:8px;font:inherit;font-size:12.5px;color:#1f1e1c;cursor:pointer}
+.pet-menu button:hover{background:#f1f0ec}
+/* 设置里的换装 */
+.pet-dress{display:grid;grid-template-columns:240px 1fr;gap:18px;padding:14px 16px;align-items:start}
+.pet-dress-prev{border-radius:16px;background:linear-gradient(180deg,#eaf3fb,#f8f5ee);display:grid;place-items:center;padding:6px 0;overflow:hidden}
+.pet.preview{cursor:default;height:270px}
+.pet-dress-opts{display:grid;gap:12px}
+.pd-row{display:grid;grid-template-columns:44px 1fr;gap:10px;align-items:start}.pd-row>b{font-size:.84rem;padding-top:5px}
+.pd-chips{display:flex;flex-wrap:wrap;gap:6px}
+.pd-chip{--sw:transparent;display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 12px;border:0;border-radius:999px;background:var(--hover);color:var(--text-3);font:inherit;font-size:.82rem;cursor:pointer}
+.pd-chip i{width:10px;height:10px;border-radius:50%;background:var(--sw)}
+.pd-chip.on{background:var(--paper);color:var(--text);box-shadow:inset 0 0 0 1.5px var(--text-3)}
+@media (max-width:760px){.pet-dress{grid-template-columns:1fr}}

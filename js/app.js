@@ -16,6 +16,7 @@ import Focus, { MiniPomo } from './views/focus.js';
 import Brain from './views/brain.js';
 import Money from './views/money.js';
 import Sticky, { keepSticky, popSticky, StickiesPage } from './views/sticky.js';
+import Pet from './views/pet.js';
 import { WinControls, initDesktop } from './winctl.js';
 import { initI18n, getLang, setLang } from './i18n.js';
 import { CountdownPage } from './views/countdown.js';
@@ -279,19 +280,20 @@ detectLogin().then(async (login) => {
 });
 // 便签窗口（#/sticky）：没有侧栏，只渲染便签；点到别的页面交给主窗口
 // 汤圆单独窗口（#/seal）：只有对话
-const BARE = /^#\/sticky/.test(location.hash) ? 'sticky' : /^#\/seal(\?|$)/.test(location.hash) ? 'seal' : '';
+// 桌面汤圆（#/pet）：透明小窗口里只有汤圆
+const BARE = /^#\/sticky/.test(location.hash) ? 'sticky' : /^#\/seal(\?|$)/.test(location.hash) ? 'seal' : /^#\/pet(\?|$)/.test(location.hash) ? 'pet' : '';
 const STICKY = !!BARE;
 if (BARE) {
-  document.documentElement.classList.add('is-bare', BARE === 'sticky' ? 'is-sticky' : 'is-seal-win');
+  document.documentElement.classList.add('is-bare', BARE === 'sticky' ? 'is-sticky' : BARE === 'pet' ? 'is-pet' : 'is-seal-win');
   document.title = BARE === 'sticky' ? '便签 · Sealonote' : '汤圆 · Sealonote';
-  keepSticky(BARE === 'sticky' ? '#/sticky' : '#/seal');
+  keepSticky(BARE === 'sticky' ? '#/sticky' : BARE === 'pet' ? '#/pet' : '#/seal');
   // 没有 App 外壳，主题要自己跟上（深浅色 / 风格改了，这些小窗口也跟着变）
   const themeNow = () => { const st = get().settings; applyTheme(st.theme, st.skin || 'notion', st.fx || 'lite', st.sealGlow !== false, st.sealAccent || 'none'); };
   themeNow(); let tk = ''; subscribe(() => { const st = get().settings; const k = [st.theme, st.skin, st.fx, st.sealGlow, st.sealAccent].join('|'); if (k !== tk) { tk = k; themeNow(); } });
   matchMedia('(prefers-color-scheme: dark)').addEventListener('change', themeNow);
 }
 await initI18n(); // 英文界面：先把词典准备好，免得先闪一下中文
-render(BARE === 'seal' ? html`<${Seal} standalone />` : BARE ? html`<${Sticky} />` : html`<${App} />`, document.getElementById('app'));
+render(BARE === 'seal' ? html`<${Seal} standalone />` : BARE === 'pet' ? html`<${Pet} />` : BARE ? html`<${Sticky} />` : html`<${App} />`, document.getElementById('app'));
 // 过了半夜（桌面版、标签页一直开着）：「今天」换了，整个界面重新算一遍——没在打字时直接刷新；窗口重新回到前台时也看一眼
 (() => {
   let day = todayStr();
