@@ -2,7 +2,7 @@
 //  · 你打字时它跟着拍鳍（只知道「按了一下」，不知道按了什么），下面写着今天敲了多少下
 //  · 番茄钟在走时头顶有个计时环，点一下暂停 / 继续
 //  · 按住拖：挪到桌面任何地方；往上一甩：打开便签；点一下：菜单
-//  · 帽子、围巾、眼镜、小屋在「设置 → 汤圆」里换，跟着账号同步
+//  · 帽子、围巾、小屋在「设置 → 汤圆」里换，跟着账号同步
 import { html, useState, useEffect, useRef } from '../../vendor/preact.js';
 import { useStore, update } from '../store.js';
 import { loadThree, buildSeal } from '../seal3d.js';
