@@ -5057,3 +5057,26 @@ html.is-pet body{margin:0}
 .pet-size span{margin-right:4px}
 .pet-size button{padding:3px 8px!important;border-radius:6px;background:#f6f5f2!important;font-size:12px!important}
 .pet-size button.on{background:#1f1e1c!important;color:#fff!important}
+/* ---- 汤圆的房间 ---- */
+.room{position:relative;width:100%;aspect-ratio:360/260;border-radius:14px;overflow:hidden;box-shadow:0 0 0 1px rgba(0,0,0,.06),0 6px 20px -12px rgba(0,0,0,.25)}
+.room-svg{position:absolute;inset:0;width:100%;height:100%;display:block}
+.room-front{z-index:2}
+.room-it.edit{cursor:grab}.room-it.dragging{cursor:grabbing;filter:drop-shadow(0 6px 6px rgba(0,0,0,.18))}
+.room-seal{position:absolute;z-index:1;transform:translate(-50%,-100%);width:34%;pointer-events:none;transition:left .6s cubic-bezier(.2,.8,.2,1),top .6s cubic-bezier(.2,.8,.2,1)}
+.room-seal canvas,.pet-doll{display:block;width:100%;height:auto;aspect-ratio:1}
+.room-wrap{padding:14px 16px}
+.room-ed{display:grid;gap:14px}
+.room-tools{display:grid;gap:10px}
+.rt-row{display:flex;flex-wrap:wrap;gap:6px;align-items:center}.rt-row>b{width:40px;font-size:.84rem}
+.rt-sw{display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 10px;border:0;border-radius:999px;background:var(--hover);color:var(--text-3);font:inherit;font-size:.8rem;cursor:pointer}
+.rt-sw i{width:12px;height:12px;border-radius:4px;background:var(--c);box-shadow:inset 0 0 0 1px rgba(0,0,0,.1)}
+.rt-sw.on{background:var(--paper);color:var(--text);box-shadow:inset 0 0 0 1.5px var(--text-3)}
+.rt-items{display:grid;grid-template-columns:repeat(auto-fill,minmax(78px,1fr));gap:8px}
+.rt-it{display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 4px 6px;border:0;border-radius:12px;background:var(--hover);font:inherit;font-size:.74rem;color:var(--text-3);cursor:pointer}
+.rt-it svg{width:56px;height:40px}
+.rt-it:hover:not(:disabled){background:var(--paper);box-shadow:inset 0 0 0 1px var(--line-2);color:var(--text)}
+.rt-it.locked{opacity:.5;cursor:not-allowed}.rt-it.locked svg{filter:grayscale(1)}
+/* 桌面窗口里的房间 */
+.pet.room-mode{width:380px;height:360px;padding:6px 10px 8px}
+.pet.room-mode .room{flex:none}
+.pet.room-mode .pet-keys{margin-top:6px}

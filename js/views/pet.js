@@ -7,8 +7,9 @@ import { html, useState, useEffect, useRef } from '../../vendor/preact.js';
 import { useStore, update } from '../store.js';
 import { loadThree, buildSeal } from '../seal3d.js';
 import * as pomo from '../pomo.js';
+import { Room, roomOf, sealSpot } from '../room.js';
 
-export const HATS = [['', '不戴'], ['beanie', '毛线帽'], ['bow', '蝴蝶结'], ['crown', '小皇冠'], ['phones', '耳机'], ['straw', '草帽'], ['party', '生日帽'], ['chef', '厨师帽'], ['bunny', '兔耳朵'], ['flowers', '花环'], ['cap', '鸭舌帽']];
+export const HATS = [['', '不戴'], ['beanie', '毛线帽'], ['bow', '蝴蝶结'], ['crown', '小皇冠'], ['phones', '耳机'], ['straw', '草帽'], ['party', '生日帽'], ['chef', '厨师帽'], ['bunny', '兔耳朵'], ['flowers', '花环'], ['cap', '贝雷帽']];
 export const NECKS = [['', '不戴'], ['bowtie', '领结'], ['bell', '小铃铛']];
 export const SCARVES = [['', '不戴'], ['#d2524f', '红'], ['#4f7cf5', '蓝'], ['#4a9a6a', '绿'], ['#e0a23c', '黄'], ['#8a63c9', '紫']];
 export const HOUSES = [['', '不要'], ['igloo', '冰屋'], ['cushion', '软垫'], ['desk', '书桌'], ['beach', '沙滩'], ['cloud', '云朵'], ['books', '书堆'], ['lily', '荷叶']];
@@ -77,19 +78,18 @@ function dress(THREE, m, look) {
       add(m.headPiv, g);
     });
   } else if (look.hat === 'flowers') {
-    const g = new THREE.Group(); g.position.set(0, top - .14, m.head.position.z - .05); g.rotation.x = -.2;
-    const ring = new THREE.Mesh(new THREE.TorusGeometry(.5, .04, 8, 40), mat(0x5c9a52)); ring.rotation.x = Math.PI / 2; g.add(ring);
+    const g = new THREE.Group(); g.position.set(0, top - .2, m.head.position.z - .02); g.rotation.x = -.32;
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(.56, .05, 8, 40), mat(0x5c9a52)); ring.rotation.x = Math.PI / 2; g.add(ring);
     const cols = [0xf2a7b8, 0xf6cf63, 0xffffff, 0xc9a7f0];
-    for (let i = 0; i < 8; i++) { const a = (i / 8) * Math.PI * 2; const f = new THREE.Group(); f.position.set(Math.sin(a) * .5, .04, Math.cos(a) * .5);
-      for (let k = 0; k < 5; k++) { const pa = (k / 5) * Math.PI * 2; const pt = new THREE.Mesh(new THREE.SphereGeometry(.06, 10, 8), mat(cols[i % cols.length])); pt.position.set(Math.cos(pa) * .07, .02, Math.sin(pa) * .07); f.add(pt); }
-      const c = new THREE.Mesh(new THREE.SphereGeometry(.045, 10, 8), mat(0xe8aa1c)); c.position.y = .04; f.add(c); g.add(f); }
+    for (let i = 0; i < 9; i++) { const a = (i / 9) * Math.PI * 2; const f = new THREE.Group(); f.position.set(Math.sin(a) * .56, .06, Math.cos(a) * .56);
+      for (let k = 0; k < 5; k++) { const pa = (k / 5) * Math.PI * 2; const pt = new THREE.Mesh(new THREE.SphereGeometry(.085, 12, 10), mat(cols[i % cols.length])); pt.scale.y = .6; pt.position.set(Math.cos(pa) * .1, .03, Math.sin(pa) * .1); f.add(pt); }
+      const c = new THREE.Mesh(new THREE.SphereGeometry(.06, 10, 8), mat(0xe8aa1c)); c.position.y = .07; f.add(c); g.add(f); }
     add(m.headPiv, g);
   } else if (look.hat === 'cap') {
-    const navy = mat(0x2a4f9a);
-    const g = new THREE.Group(); g.position.set(0, m.head.position.y, m.head.position.z); g.rotation.x = -.1;
+    const navy = mat(0xb8364a);
+    const g = new THREE.Group(); g.position.set(0, m.head.position.y, m.head.position.z); g.rotation.x = -.1; g.rotation.z = .22;
     const dome = new THREE.Mesh(new THREE.SphereGeometry(OUT, 40, 20, 0, Math.PI * 2, 0, Math.PI * .3), navy); g.add(dome);
-    const bill = new THREE.Mesh(new THREE.CylinderGeometry(.42, .42, .04, 32, 1, false, -Math.PI / 2, Math.PI), navy); bill.scale.set(1.3, 1, 1.25); bill.position.set(0, OUT * .66, OUT * .62); bill.rotation.x = .38; g.add(bill);
-    const btn = new THREE.Mesh(new THREE.SphereGeometry(.06, 12, 8), mat(0xe03a6a)); btn.position.y = OUT; g.add(btn);
+    const btn = new THREE.Mesh(new THREE.CylinderGeometry(.02, .03, .1, 8), mat(0x7a1f2e)); btn.position.y = OUT + .02; g.add(btn);
     add(m.headPiv, g);
   }
   if (look.neck === 'bowtie') {
@@ -127,7 +127,7 @@ function House({ kind }) {
 
 function usePomo() { const [st, set] = useState(pomo.get()); useEffect(() => pomo.subscribe((x) => set({ ...x })), []); const [, tick] = useState(0); useEffect(() => { const t = setInterval(() => tick((x) => x + 1), 1000); return () => clearInterval(t); }, []); return st; }
 
-export default function Pet({ preview = false }) {
+export default function Pet({ preview = false, bare = false }) {
   const s = useStore(); const look = petLook(s);
   const desk = !preview && typeof window !== 'undefined' && window.sealonote && window.sealonote.pet;
   const cv = useRef(); const model = useRef(null); const three = useRef(null); const tapAt = useRef(0); const side = useRef(1);
@@ -186,6 +186,10 @@ export default function Pet({ preview = false }) {
   const ls = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch { return d; } };
   const [size, setSizeS] = useState(() => ls('ytos.pet.size', 1)); const [locked, setLockedS] = useState(() => ls('ytos.pet.locked', false));
   const canSize = !!(desk && desk.setScale);
+  const canRoom = !!(desk && desk.setRoom);
+  const [roomOn, setRoomOn] = useState(() => !preview && ls('ytos.pet.room', false));
+  const toggleRoom = () => { const v = !roomOn; setRoomOn(v); try { localStorage.setItem('ytos.pet.room', JSON.stringify(v)); } catch {} if (canRoom) desk.setRoom(v); setGlKey((k) => k + 1); say(v ? '欢迎来我房间' : '我出来啦'); };
+  useEffect(() => { if (canRoom && roomOn) desk.setRoom(true); }, []);
   const setSize = (k) => { k = Math.max(.6, Math.min(1.8, Math.round(k * 10) / 10)); setSizeS(k); try { localStorage.setItem('ytos.pet.size', JSON.stringify(k)); } catch {} if (canSize) desk.setScale(k); };
   const setLocked = (v) => { setLockedS(v); try { localStorage.setItem('ytos.pet.locked', JSON.stringify(v)); } catch {} };
   useEffect(() => { if (canSize && size !== 1) desk.setScale(size); }, []);
@@ -209,13 +213,15 @@ export default function Pet({ preview = false }) {
   const remain = st.phase !== 'idle' ? pomo.remaining() : 0; const total = (st.phase === 'break' ? st.breakLen : st.workLen) * 60; const frac = total ? Math.min(1, Math.max(0, 1 - remain / total)) : 0; const C = 2 * Math.PI * 15;
   const item = (label, fn) => html`<button type="button" onClick=${() => { setMenu(false); fn(); }}>${label}</button>`;
 
+  if (bare) return html`<canvas key=${glKey} ref=${cv} class="pet-doll" width="190" height="190"></canvas>`;
   if (preview) return html`<div class=${'pet preview ' + (look.house ? 'has-house house-' + look.house : '')}><div class="pet-say">${msg || '在下面给我换装吧'}</div><div class="pet-stage"><${House} kind=${look.house} /><canvas key=${glKey} ref=${cv} width="190" height="190"></canvas></div></div>`;
-  return html`<div class=${'pet ' + (look.house ? 'has-house house-' + look.house : '')} onPointerDown=${down} onPointerMove=${move} onPointerUp=${up} onWheel=${wheel} onContextMenu=${(e) => { e.preventDefault(); setMenu(true); }}>
+  return html`<div class=${'pet ' + (roomOn ? 'room-mode ' : '') + (look.house ? 'has-house house-' + look.house : '')} onPointerDown=${down} onPointerMove=${move} onPointerUp=${up} onWheel=${wheel} onContextMenu=${(e) => { e.preventDefault(); setMenu(true); }}>
     ${st.phase !== 'idle' ? html`<button type="button" class=${'pet-pomo ' + st.phase + (st.paused ? ' paused' : '')} title=${st.paused ? '点一下继续' : '点一下暂停'} onClick=${() => (st.paused ? pomo.resume() : pomo.pause())}>
       <svg viewBox="0 0 36 36" width="34" height="34" aria-hidden="true"><circle cx="18" cy="18" r="15" class="tr" /><circle cx="18" cy="18" r="15" class="fg" style=${`stroke-dasharray:${C};stroke-dashoffset:${C * (1 - frac)}`} /></svg>
       <b>${pomo.fmt(remain)}</b><small>${st.paused ? '暂停中' : st.phase === 'break' ? '休息' : (st.label || '专注').slice(0, 8)}</small>
     </button>` : msg ? html`<div class="pet-say">${msg}</div>` : html`<div class="pet-say ghost"></div>`}
-    <div class="pet-stage"><${House} kind=${look.house} /><canvas key=${glKey} ref=${cv} width="190" height="190"></canvas></div>
+    ${roomOn ? html`<${Room} room=${roomOf(s)} sealAt=${sealSpot(roomOf(s), st.phase === 'work' && !st.paused)}><canvas key=${glKey} ref=${cv} class="pet-doll" width="190" height="190"></canvas><//>`
+      : html`<div class="pet-stage"><${House} kind=${look.house} /><canvas key=${glKey} ref=${cv} width="190" height="190"></canvas></div>`}
     ${desk && html`<div class="pet-keys" title="只数按了几下，不记录按了什么">${keys.running || keys.today ? html`今天 <b>${(keys.today || 0).toLocaleString()}</b> 下` : keys.needsPermission ? '点我开启打字计数' : ''}</div>`}
     ${menu && html`<div class="pet-menu" onPointerDown=${(e) => e.stopPropagation()}>
       ${item('打开便签', openSticky)}
@@ -224,6 +230,7 @@ export default function Pet({ preview = false }) {
       ${item('和汤圆聊聊', () => (window.sealonote && window.sealonote.showAI ? window.sealonote.showAI() : (location.hash = '#/seal')))}
       ${item('换装和小屋…', () => (window.sealonote && window.sealonote.openMain ? window.sealonote.openMain('#/settings?sec=seal') : (location.hash = '#/settings?sec=seal')))}
       ${canSize && html`<div class="pet-size"><span>大小</span>${[[.7, '小'], [1, '中'], [1.3, '大'], [1.6, '特大']].map(([k, l]) => html`<button type="button" class=${Math.abs(size - k) < .05 ? 'on' : ''} onClick=${() => setSize(k)}>${l}</button>`)}</div>`}
+      ${canRoom && item(roomOn ? '回到小屋' : '汤圆的房间', toggleRoom)}
       ${item(locked ? '取消固定位置' : '固定在这里', () => { setLocked(!locked); say(locked ? '可以拖着我走啦' : '我就待在这儿'); })}
       ${desk && item(keys.on === false || keys.needsPermission ? '开启打字计数' : '关闭打字计数', async () => { const r = await desk.setCount(keys.on === false || keys.needsPermission); setKeys(r); if (r.needsPermission) say('在系统设置 → 隐私 → 辅助功能里允许 Sealonote'); })}
       ${item('打开 SealoNote', () => (window.sealonote && window.sealonote.openMain ? window.sealonote.openMain('') : (location.hash = '#/')))}

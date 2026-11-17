@@ -180,7 +180,7 @@ const PET_W = 220, PET_H = 300;
 function defaultPetPos() { const w = screen.getPrimaryDisplay().workArea; return { x: w.x + w.width - PET_W - 24, y: w.y + w.height - PET_H - 8 }; }
 function createPet() {
   const at = cfg.pet && onScreen({ ...cfg.pet, width: PET_W, height: PET_H }) ? cfg.pet : defaultPetPos();
-  const k = petScale(); pet = new BrowserWindow({ x: at.x, y: at.y, width: Math.round(PET_W * k), height: Math.round(PET_H * k), frame: false, transparent: true, backgroundColor: '#00000000', hasShadow: false, resizable: false, maximizable: false, minimizable: false, fullscreenable: false, skipTaskbar: true, show: false, title: '汤圆', icon: ICON, webPreferences: { ...webPrefs(), backgroundThrottling: false, zoomFactor: k } });
+  const k = petScale(); const [pw, ph] = petDims(k); pet = new BrowserWindow({ x: at.x, y: at.y, width: pw, height: ph, frame: false, transparent: true, backgroundColor: '#00000000', hasShadow: false, resizable: false, maximizable: false, minimizable: false, fullscreenable: false, skipTaskbar: true, show: false, title: '汤圆', icon: ICON, webPreferences: { ...webPrefs(), backgroundThrottling: false, zoomFactor: k } });
   pet.setAlwaysOnTop(true, 'floating'); pet.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: false });
   guard(pet);
   pet.once('ready-to-show', () => { pet.webContents.setZoomFactor(petScale()); pet.showInactive(); });
@@ -191,10 +191,18 @@ function createPet() {
 }
 const petScale = () => Math.max(.6, Math.min(1.8, Number(cfg.petScale) || 1));
 // 变大变小：窗口跟着缩放，汤圆脚下那一点不动（底边中间对齐）
+const ROOM_W = 380, ROOM_H = 360;
+const petDims = (k = petScale()) => (cfg.petRoom ? [ROOM_W, ROOM_H] : [PET_W, PET_H]).map((v) => Math.round(v * k));
+// 打开 / 关上房间：窗口变大变小，脚下那一点不动
+function setPetRoom(on) {
+  cfg.petRoom = !!on; saveCfg(); if (!pet || pet.isDestroyed()) return cfg.petRoom;
+  const b = pet.getBounds(); const [w, h] = petDims(); const x = Math.round(b.x + b.width / 2 - w / 2), y = b.y + b.height - h;
+  pet.setBounds({ x, y, width: w, height: h }); cfg.pet = { x, y }; saveCfg(); return cfg.petRoom;
+}
 function setPetScale(k) {
   k = Math.max(.6, Math.min(1.8, Number(k) || 1)); cfg.petScale = k; saveCfg();
   if (!pet || pet.isDestroyed()) return k;
-  const b = pet.getBounds(); const w = Math.round(PET_W * k), h = Math.round(PET_H * k);
+  const b = pet.getBounds(); const [w, h] = petDims(k);
   const x = Math.round(b.x + b.width / 2 - w / 2), y = b.y + b.height - h;
   pet.setBounds({ x, y, width: w, height: h }); pet.webContents.setZoomFactor(k); cfg.pet = { x, y }; saveCfg();
   return k;
@@ -294,6 +302,7 @@ else {
     ipcMain.on('pet:moveBy', (_e, dx, dy) => { if (!pet || pet.isDestroyed()) return; const [x, y] = pet.getPosition(); const nx = x + (dx | 0), ny = y + (dy | 0); pet.setPosition(nx, ny); cfg.pet = { x: nx, y: ny }; saveCfg(); });
     ipcMain.handle('pet:stats', () => keyStats());
     ipcMain.handle('pet:setScale', (_e, k) => setPetScale(k));
+    ipcMain.handle('pet:setRoom', (_e, on) => setPetRoom(on));
     ipcMain.handle('pet:setCount', (_e, on) => { cfg.countKeys = !!on; saveCfg(); if (on) { if (MAC && !systemPreferences.isTrustedAccessibilityClient(true)) { keysErr = 'needs-permission'; return keyStats(); } startKeys(); } else stopKeys(); return keyStats(); });
     ipcMain.handle('titlebar:set', () => {}); // 0.2 的网页还会调；现在按钮由网页自己画
 

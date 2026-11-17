@@ -14,6 +14,7 @@ import { ctxMenu } from '../ctx.js';
 import { trashPages } from './notes.js';
 import { PROMPT_VARS, newPrompt, fillVars } from '../prompts.js';
 import Pet, { HATS, NECKS, SCARVES, HOUSES, petLook, setPetLook } from './pet.js';
+import { RoomEditor } from '../room.js';
 
 export async function uploadAvatar(file) {
   try {
@@ -307,6 +308,9 @@ export default function Settings() {
         <${Row} icon="right" label="闲时贴边" hint="没人理时缩到屏幕边"><${Switch} label="闲时贴边" on=${s.settings.sealTuck === true} onChange=${(v) => update((d) => { d.settings.sealTuck = v; })} /><//>
         <${Row} icon="sparkle" label="光效"><${Switch} label="光效" on=${s.settings.sealGlow !== false} onChange=${(v) => update((d) => { d.settings.sealGlow = v; })} /><//>
         <${Row} icon="star" label="强调色"><${Seg} options=${[{ v: 'none', label: '黑白' }, { v: 'ice', label: '冰蓝' }, { v: 'teal', label: '青绿' }]} value=${s.settings.sealAccent || 'none'} onChange=${(v) => update((d) => { d.settings.sealAccent = v; })} /><//>
+      <//>
+      <${Group} title="汤圆的房间">
+        <div class="room-wrap"><${RoomEditor} s=${s}><${Pet} preview=${true} bare=${true} /><//></div>
       <//>
       <${Group} title="桌面汤圆">
         <div class="pet-dress">

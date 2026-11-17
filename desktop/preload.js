@@ -33,6 +33,7 @@ contextBridge.exposeInMainWorld('sealonote', {
     moveBy: (dx, dy) => ipcRenderer.send('pet:moveBy', Math.round(Number(dx) || 0), Math.round(Number(dy) || 0)),
     stats: () => ipcRenderer.invoke('pet:stats'),
     setScale: (k) => ipcRenderer.invoke('pet:setScale', Number(k)),
+    setRoom: (on) => ipcRenderer.invoke('pet:setRoom', !!on),
     setCount: (on) => ipcRenderer.invoke('pet:setCount', !!on),
     onKey: (cb) => { const h = (_e, v) => cb(v); ipcRenderer.on('pet:key', h); return () => ipcRenderer.removeListener('pet:key', h); },
   },
