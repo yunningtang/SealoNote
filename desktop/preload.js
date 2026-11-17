@@ -3,7 +3,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('sealonote', {
   desktop: true,
-  version: 4,
+  version: 5,
   platform: process.platform,
   // 网页自己画的最小化 / 最大化 / 关闭
   win: {
@@ -32,6 +32,7 @@ contextBridge.exposeInMainWorld('sealonote', {
     hide: () => ipcRenderer.invoke('pet:hide'),
     moveBy: (dx, dy) => ipcRenderer.send('pet:moveBy', Math.round(Number(dx) || 0), Math.round(Number(dy) || 0)),
     stats: () => ipcRenderer.invoke('pet:stats'),
+    setScale: (k) => ipcRenderer.invoke('pet:setScale', Number(k)),
     setCount: (on) => ipcRenderer.invoke('pet:setCount', !!on),
     onKey: (cb) => { const h = (_e, v) => cb(v); ipcRenderer.on('pet:key', h); return () => ipcRenderer.removeListener('pet:key', h); },
   },

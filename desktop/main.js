@@ -21,6 +21,8 @@ const ICON = path.join(__dirname, 'icon.png');
 // 汤圆是 3D 的（WebGL）：有些显卡在 Chromium 的黑名单里，默认会关掉 WebGL，汤圆就只剩一张平面图。打开它
 app.commandLine.appendSwitch('ignore-gpu-blocklist');
 app.commandLine.appendSwitch('enable-unsafe-swiftshader');
+// Windows 会把「被别的窗口挡住」的窗口停止绘制；透明的桌面汤圆窗口常被误判，汤圆就不见了，关掉这个判断
+app.commandLine.appendSwitch('disable-features', 'CalculateNativeWinOcclusion');
 
 let main = null, sticky = null, ai = null, pet = null, tray = null, quitting = false;
 const notes = new Map(); // noteId → BrowserWindow
@@ -178,14 +180,24 @@ const PET_W = 220, PET_H = 300;
 function defaultPetPos() { const w = screen.getPrimaryDisplay().workArea; return { x: w.x + w.width - PET_W - 24, y: w.y + w.height - PET_H - 8 }; }
 function createPet() {
   const at = cfg.pet && onScreen({ ...cfg.pet, width: PET_W, height: PET_H }) ? cfg.pet : defaultPetPos();
-  pet = new BrowserWindow({ x: at.x, y: at.y, width: PET_W, height: PET_H, frame: false, transparent: true, backgroundColor: '#00000000', hasShadow: false, resizable: false, maximizable: false, minimizable: false, fullscreenable: false, skipTaskbar: true, show: false, title: '汤圆', icon: ICON, webPreferences: webPrefs() });
+  const k = petScale(); pet = new BrowserWindow({ x: at.x, y: at.y, width: Math.round(PET_W * k), height: Math.round(PET_H * k), frame: false, transparent: true, backgroundColor: '#00000000', hasShadow: false, resizable: false, maximizable: false, minimizable: false, fullscreenable: false, skipTaskbar: true, show: false, title: '汤圆', icon: ICON, webPreferences: { ...webPrefs(), backgroundThrottling: false, zoomFactor: k } });
   pet.setAlwaysOnTop(true, 'floating'); pet.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: false });
   guard(pet);
-  pet.once('ready-to-show', () => pet.showInactive());
+  pet.once('ready-to-show', () => { pet.webContents.setZoomFactor(petScale()); pet.showInactive(); });
   pet.on('close', (e) => { if (!quitting) { e.preventDefault(); hidePet(); } });
   pet.on('closed', () => { pet = null; });
   load(pet, '#/pet');
   startKeys();
+}
+const petScale = () => Math.max(.6, Math.min(1.8, Number(cfg.petScale) || 1));
+// 变大变小：窗口跟着缩放，汤圆脚下那一点不动（底边中间对齐）
+function setPetScale(k) {
+  k = Math.max(.6, Math.min(1.8, Number(k) || 1)); cfg.petScale = k; saveCfg();
+  if (!pet || pet.isDestroyed()) return k;
+  const b = pet.getBounds(); const w = Math.round(PET_W * k), h = Math.round(PET_H * k);
+  const x = Math.round(b.x + b.width / 2 - w / 2), y = b.y + b.height - h;
+  pet.setBounds({ x, y, width: w, height: h }); pet.webContents.setZoomFactor(k); cfg.pet = { x, y }; saveCfg();
+  return k;
 }
 function showPet() { cfg.petOn = true; saveCfg(); if (!pet || pet.isDestroyed()) createPet(); else pet.showInactive(); refreshTray(); }
 function hidePet() { if (pet && !pet.isDestroyed()) pet.hide(); cfg.petOn = false; saveCfg(); refreshTray(); }
@@ -281,6 +293,7 @@ else {
     ipcMain.handle('pet:hide', () => { hidePet(); });
     ipcMain.on('pet:moveBy', (_e, dx, dy) => { if (!pet || pet.isDestroyed()) return; const [x, y] = pet.getPosition(); const nx = x + (dx | 0), ny = y + (dy | 0); pet.setPosition(nx, ny); cfg.pet = { x: nx, y: ny }; saveCfg(); });
     ipcMain.handle('pet:stats', () => keyStats());
+    ipcMain.handle('pet:setScale', (_e, k) => setPetScale(k));
     ipcMain.handle('pet:setCount', (_e, on) => { cfg.countKeys = !!on; saveCfg(); if (on) { if (MAC && !systemPreferences.isTrustedAccessibilityClient(true)) { keysErr = 'needs-permission'; return keyStats(); } startKeys(); } else stopKeys(); return keyStats(); });
     ipcMain.handle('titlebar:set', () => {}); // 0.2 的网页还会调；现在按钮由网页自己画
 

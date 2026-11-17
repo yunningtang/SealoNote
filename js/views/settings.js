@@ -13,7 +13,7 @@ import { aiConfig, setAiConfig, aiHeaders, usageOf, clearUsage, estimateCost } f
 import { ctxMenu } from '../ctx.js';
 import { trashPages } from './notes.js';
 import { PROMPT_VARS, newPrompt, fillVars } from '../prompts.js';
-import Pet, { HATS, SCARVES, HOUSES, petLook, setPetLook } from './pet.js';
+import Pet, { HATS, NECKS, SCARVES, HOUSES, petLook, setPetLook } from './pet.js';
 
 export async function uploadAvatar(file) {
   try {
@@ -312,8 +312,8 @@ export default function Settings() {
         <div class="pet-dress">
           <div class="pet-dress-prev"><${Pet} preview=${true} /></div>
           <div class="pet-dress-opts">
-            ${[['帽子', 'hat', HATS], ['围巾', 'scarf', SCARVES], ['小屋', 'house', HOUSES]].map(([label, k, opts]) => html`<div class="pd-row" key=${k}><b>${label}</b><div class="pd-chips">${opts.map(([v, l]) => html`<button type="button" key=${v} class=${'pd-chip ' + (petLook(s)[k] === v ? 'on' : '')} style=${k === 'scarf' && v ? `--sw:${v}` : ''} onClick=${() => setPetLook({ [k]: v })}>${k === 'scarf' && v ? html`<i></i>` : ''}${l}</button>`)}</div></div>`)}
-            <p class="small muted">桌面版里汤圆会坐在桌面上：你打字它跟着拍鳍，下面写着今天敲了几下（只数次数，不记内容）；番茄钟在走时头顶有计时环。按住拖可以挪位置，往上一甩打开便签，点一下出菜单。托盘里可以开关。换的装扮跟着账号同步。</p>
+            ${[['帽子', 'hat', HATS], ['脖子', 'neck', NECKS], ['围巾', 'scarf', SCARVES], ['小屋', 'house', HOUSES]].map(([label, k, opts]) => html`<div class="pd-row" key=${k}><b>${label}</b><div class="pd-chips">${opts.map(([v, l]) => html`<button type="button" key=${v} class=${'pd-chip ' + (petLook(s)[k] === v ? 'on' : '')} style=${k === 'scarf' && v ? `--sw:${v}` : ''} onClick=${() => setPetLook({ [k]: v })}>${k === 'scarf' && v ? html`<i></i>` : ''}${l}</button>`)}</div></div>`)}
+            <p class="small muted">桌面版里汤圆会坐在桌面上：你打字它跟着拍鳍，下面写着今天敲了几下（只数次数，不记内容）；番茄钟在走时头顶有计时环。按住拖可以挪位置（也可以固定住），往上一甩打开便签，点一下出菜单，Ctrl + 滚轮或者菜单里能调大小。托盘里可以开关。换的装扮跟着账号同步。</p>
             ${window.sealonote && window.sealonote.pet ? html`<div class="row" style="gap:8px"><button class="sx-btn" onClick=${() => window.sealonote.pet.show()}>显示桌面汤圆</button><button class="sx-btn" onClick=${() => window.sealonote.pet.hide()}>收起</button></div>` : window.sealonote && window.sealonote.desktop ? html`<p class="small muted">要用桌面汤圆，请安装 0.6 或更新的桌面版。</p>` : ''}
           </div>
         </div>
