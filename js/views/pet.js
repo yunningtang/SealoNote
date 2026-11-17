@@ -114,10 +114,12 @@ function dress(THREE, m, look) {
 }
 
 // 「定格画」：用 3D 模型拍几张姿势，拍完立刻释放 3D（同一时间只拍一组，拍过的记住）
-const framesCache = new Map(); let snapQ = Promise.resolve(null);
+const framesCache = new Map(); let snapQ = Promise.resolve(null); const FRAME_V = 1;
 export const FALLBACK = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120"><path d="M16 96 C12 64 32 34 60 34 C88 34 108 64 104 96 C102 108 84 112 60 112 C36 112 18 108 16 96 Z" fill="#eef0f3" stroke="#d3d2cd" stroke-width="1.5"/><circle cx="44" cy="72" r="5" fill="#1f1e1c"/><circle cx="76" cy="72" r="5" fill="#1f1e1c"/></svg>');
 export function snapFrames(look) {
   const key = JSON.stringify(look); if (framesCache.has(key)) return Promise.resolve(framesCache.get(key));
+  // 上次拍好的存在这台电脑上：打开桌面版时汤圆马上出现，不用等重拍（模型改了就换 FRAME_V）
+  try { const c = JSON.parse(localStorage.getItem('ytos.pet.frames') || 'null'); if (c && c.v === FRAME_V && c.key === key && c.f && c.f.idle) { framesCache.set(key, c.f); return Promise.resolve(c.f); } } catch {}
   snapQ = snapQ.catch(() => null).then(async () => {
     if (framesCache.has(key)) return framesCache.get(key);
     const THREE = await loadThree(); const cv = document.createElement('canvas'); cv.width = cv.height = 190;
@@ -130,7 +132,7 @@ export function snapFrames(look) {
       const f = {}; base(); f.idle = shot();
       base(); m.eyes.forEach((e) => { e.scale.y = .08; }); f.blink = shot();
       for (const [name, sd] of [['left', -1], ['right', 1]]) { base(); m.rig.position.y = .05; m.headPiv.rotation.z = sd * .08; m.tailPiv.rotation.y = sd * .15; m.flips.forEach(({ piv, sx }) => { piv.rotation.z = sx * -.22 + (sx === sd ? sx * .9 : 0); }); f[name] = shot(); }
-      framesCache.set(key, f); return f;
+      framesCache.set(key, f); try { localStorage.setItem('ytos.pet.frames', JSON.stringify({ v: FRAME_V, key, f })); } catch {} return f;
     } finally { try { m.dispose(); m.renderer.forceContextLoss(); } catch {} }
   });
   return snapQ;
@@ -148,7 +150,7 @@ export default function Pet({ preview = false, bare = false }) {
 
   // 汤圆用「定格画」：开始时用 3D 模型拍好几张姿势（平时 / 眨眼 / 左鳍拍 / 右鳍拍 / 开心），拍完就把 3D 关掉，
   // 之后只是换图片（像 BongoCat 那样）——不再一直占着显卡，不卡，也不会因为显卡收回画布而消失。换装时重拍一次。
-  const [frames, setFrames] = useState(() => framesCache.get(JSON.stringify(look)) || null);
+  const [frames, setFrames] = useState(() => framesCache.get(JSON.stringify(look)) || (() => { try { const c = JSON.parse(localStorage.getItem('ytos.pet.frames') || 'null'); return c && c.v === FRAME_V && c.key === JSON.stringify(look) ? c.f : null; } catch { return null; } })());
   const [pose, setPose] = useState('idle'); const poseT = useRef(0);
   const lookKey = JSON.stringify(look);
   useEffect(() => { let dead = false; snapFrames(look).then((f) => { if (!dead && f) setFrames(f); }); return () => { dead = true; }; }, [lookKey]);
