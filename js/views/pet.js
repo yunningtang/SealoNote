@@ -51,7 +51,7 @@ function dress(THREE, m, look) {
     const dark = mat(0x111214, { roughness: .4 });
     m.eyes.forEach((e) => { const r = new THREE.Mesh(new THREE.TorusGeometry(.18, .032, 10, 32), dark); r.position.set(0, 0, .12); add(e, r); });
     const bridge = new THREE.Mesh(new THREE.CylinderGeometry(.018, .018, .3, 8), dark); bridge.rotation.z = Math.PI / 2;
-    const a = m.eyes[0].position, b = m.eyes[1].position; bridge.position.set((a.x + b.x) / 2, (a.y + b.y) / 2 + .03, (a.z + b.z) / 2 + .14); add(m.headPiv, bridge);
+    const a = m.eyes[0].position, b = m.eyes[1].position; bridge.position.set((a.x + b.x) / 2, (a.y + b.y) / 2 - .01, (a.z + b.z) / 2 + .1); add(m.headPiv, bridge);
   }
   if (look.scarf) {
     const g = new THREE.Group(); g.position.set(0, m.headPiv.position.y - .3, m.headPiv.position.z + .02); g.rotation.x = Math.PI / 2 - .25;
@@ -64,9 +64,9 @@ function dress(THREE, m, look) {
 // 小屋：画在汤圆身后 / 身下的一张图（SVG），不进 3D
 function House({ kind }) {
   if (kind === 'igloo') return html`<svg class="pet-house" viewBox="0 0 220 120" aria-hidden="true"><path d="M20 112 C20 40 200 40 200 112 Z" fill="#f4f8fc" stroke="#c9d6e3" stroke-width="2"/><path d="M38 78 H182 M28 96 H192 M60 60 H160 M80 60 V78 M140 60 V78 M60 78 V96 M110 78 V96 M160 78 V96 M85 96 V112 M135 96 V112" stroke="#d6e1ec" stroke-width="2" fill="none"/><path d="M86 112 C86 86 134 86 134 112 Z" fill="#cfdbe7"/></svg>`;
-  if (kind === 'cushion') return html`<svg class="pet-house" viewBox="0 0 220 120" aria-hidden="true"><ellipse cx="110" cy="100" rx="96" ry="18" fill="#e8b4a4"/><ellipse cx="110" cy="94" rx="92" ry="16" fill="#f3c8b9"/><path d="M40 94 Q110 84 180 94" stroke="#e8b4a4" stroke-width="2" fill="none"/></svg>`;
-  if (kind === 'desk') return html`<svg class="pet-house" viewBox="0 0 220 120" aria-hidden="true"><rect x="10" y="96" width="200" height="10" rx="3" fill="#b98a5e"/><rect x="22" y="106" width="8" height="14" fill="#9c7049"/><rect x="190" y="106" width="8" height="14" fill="#9c7049"/><rect x="160" y="60" width="4" height="36" fill="#6b6f78"/><path d="M146 60 L178 60 L170 46 L154 46 Z" fill="#f2c14e"/><rect x="24" y="84" width="34" height="12" rx="2" fill="#4f7cf5"/><rect x="28" y="74" width="28" height="10" rx="2" fill="#4a9a6a"/></svg>`;
-  if (kind === 'beach') return html`<svg class="pet-house" viewBox="0 0 220 120" aria-hidden="true"><path d="M0 104 Q55 92 110 100 T220 98 V120 H0 Z" fill="#f1dcae"/><path d="M0 112 Q40 104 80 110 T160 108 T220 110 V120 H0 Z" fill="#8ec9e8" opacity=".75"/><circle cx="186" cy="34" r="12" fill="#f6cf63" opacity=".8"/></svg>`;
+  if (kind === 'cushion') return html`<svg class="pet-house" viewBox="0 0 220 120" aria-hidden="true"><ellipse cx="110" cy="76.0" rx="96" ry="18" fill="#e8b4a4"/><ellipse cx="110" cy="70.0" rx="92" ry="16" fill="#f3c8b9"/><path d="M 40.0 70.0 Q 110.0 60.0 180.0 70.0" stroke="#e8b4a4" stroke-width="2" fill="none"/></svg>`;
+  if (kind === 'desk') return html`<svg class="pet-house" viewBox="0 0 220 120" aria-hidden="true"><rect x="10" y="70.0" width="200" height="10" rx="3" fill="#b98a5e"/><rect x="22" y="80.0" width="8" height="14" fill="#9c7049"/><rect x="190" y="80.0" width="8" height="14" fill="#9c7049"/><rect x="160" y="34.0" width="4" height="36" fill="#6b6f78"/><path d="M 146.0 34.0 L 178.0 34.0 L 170.0 20.0 L 154.0 20.0 Z" fill="#f2c14e"/><rect x="24" y="58.0" width="34" height="12" rx="2" fill="#4f7cf5"/><rect x="28" y="48.0" width="28" height="10" rx="2" fill="#4a9a6a"/></svg>`;
+  if (kind === 'beach') return html`<svg class="pet-house" viewBox="0 0 220 120" aria-hidden="true"><path d="M 0.0 74.0 Q 55.0 62.0 110.0 70.0 T 220.0 68.0 V 90.0 H 0.0 Z" fill="#f1dcae"/><path d="M 0.0 82.0 Q 40.0 74.0 80.0 80.0 T 160.0 78.0 T 220.0 80.0 V 90.0 H 0.0 Z" fill="#8ec9e8" opacity=".75"/><circle cx="186" cy="4.0" r="12" fill="#f6cf63" opacity=".8"/></svg>`;
   return null;
 }
 
@@ -131,8 +131,8 @@ export default function Pet({ preview = false }) {
   const remain = st.phase !== 'idle' ? pomo.remaining() : 0; const total = (st.phase === 'break' ? st.breakLen : st.workLen) * 60; const frac = total ? Math.min(1, Math.max(0, 1 - remain / total)) : 0; const C = 2 * Math.PI * 15;
   const item = (label, fn) => html`<button type="button" onClick=${() => { setMenu(false); fn(); }}>${label}</button>`;
 
-  if (preview) return html`<div class=${'pet preview ' + (look.house ? 'has-house' : '')}><div class="pet-say">${msg || '在下面给我换装吧'}</div><div class="pet-stage"><${House} kind=${look.house} /><canvas ref=${cv} width="190" height="190"></canvas></div></div>`;
-  return html`<div class=${'pet ' + (look.house ? 'has-house' : '')} onPointerDown=${down} onPointerMove=${move} onPointerUp=${up} onContextMenu=${(e) => { e.preventDefault(); setMenu(true); }}>
+  if (preview) return html`<div class=${'pet preview ' + (look.house ? 'has-house house-' + look.house : '')}><div class="pet-say">${msg || '在下面给我换装吧'}</div><div class="pet-stage"><${House} kind=${look.house} /><canvas ref=${cv} width="190" height="190"></canvas></div></div>`;
+  return html`<div class=${'pet ' + (look.house ? 'has-house house-' + look.house : '')} onPointerDown=${down} onPointerMove=${move} onPointerUp=${up} onContextMenu=${(e) => { e.preventDefault(); setMenu(true); }}>
     ${st.phase !== 'idle' ? html`<button type="button" class=${'pet-pomo ' + st.phase + (st.paused ? ' paused' : '')} title=${st.paused ? '点一下继续' : '点一下暂停'} onClick=${() => (st.paused ? pomo.resume() : pomo.pause())}>
       <svg viewBox="0 0 36 36" width="34" height="34" aria-hidden="true"><circle cx="18" cy="18" r="15" class="tr" /><circle cx="18" cy="18" r="15" class="fg" style=${`stroke-dasharray:${C};stroke-dashoffset:${C * (1 - frac)}`} /></svg>
       <b>${pomo.fmt(remain)}</b><small>${st.paused ? '暂停中' : st.phase === 'break' ? '休息' : (st.label || '专注').slice(0, 8)}</small>

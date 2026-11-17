@@ -5052,3 +5052,4 @@ html.is-pet body{margin:0}
 .pd-chip i{width:10px;height:10px;border-radius:50%;background:var(--sw)}
 .pd-chip.on{background:var(--paper);color:var(--text);box-shadow:inset 0 0 0 1.5px var(--text-3)}
 @media (max-width:760px){.pet-dress{grid-template-columns:1fr}}
+.pet.house-cushion .pet-stage canvas,.pet.house-desk .pet-stage canvas,.pet.house-beach .pet-stage canvas{margin-bottom:-22px}
