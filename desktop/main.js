@@ -166,11 +166,11 @@ const noteOf = (e) => { for (const [id, w] of notes) if (w.webContents === e.sen
 /* ---------- 汤圆窗口和主窗口并排，不叠在一起 ---------- */
 // 打开汤圆时如果和主窗口叠着：汤圆靠到主窗口所在屏幕的右边，主窗口让出这块地方（最大化的先还原）。
 // 关掉汤圆时，主窗口还是我们让出来的那个样子（你没再动过它），就还原回去。
-let mainBefore = null, mainShrunk = null, notesMoved = [];
+let mainBefore = null, mainShrunk = null, notesMoved = [], petMoved = null;
 const vis = (w) => w && !w.isDestroyed() && w.isVisible() && !w.isMinimized();
 const overlap = (a, b) => a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
 const same = (a, b) => b && ['x', 'y', 'width', 'height'].every((k) => Math.abs(a[k] - b[k]) <= 4); // 系统可能差一两像素
-// 便签也让开：挡着汤圆的便签挪到汤圆左边一列；主窗口再让出这一列（让完还有 560 宽的话），变成「主窗口 | 便签 | 汤圆」
+// 便签、桌面汤圆也让开：挡着汤圆窗口的便签挪到它左边一列；主窗口再让出这一列（让完还有 560 宽的话），变成「主窗口 | 便签 | 汤圆」
 function sideBySide() {
   if (!vis(ai)) return;
   const GAP = 8; let A = ai.getBounds();
@@ -188,6 +188,15 @@ function sideBySide() {
     if (!notesMoved.some((m) => m.w === w)) notesMoved.push({ w, before: b, to }); else notesMoved.find((m) => m.w === w).to = to;
     w.setBounds(to); col = Math.min(col, to.x);
   }
+  // 桌面汤圆也让开：挪到汤圆窗口左边（只挪它自己，主窗口不用为它让位）
+  if (vis(pet)) {
+    const b = pet.getBounds();
+    if (overlap(b, A)) {
+      const to = { x: Math.max(wa.x, A.x - GAP - b.width), y: b.y };
+      if (!petMoved) petMoved = { before: { x: b.x, y: b.y }, to }; else petMoved.to = to;
+      pet.setPosition(to.x, to.y); cfg.pet = { x: to.x, y: to.y }; saveCfg();
+    }
+  }
   if (!dock) return;
   mainBefore = mainBefore || { bounds: main.getNormalBounds ? main.getNormalBounds() : main.getBounds(), max: main.isMaximized() };
   if (main.isMaximized()) main.unmaximize();
@@ -201,6 +210,9 @@ function sideBySide() {
 function restoreMain() {
   for (const m of notesMoved) if (m.w && !m.w.isDestroyed() && same(m.w.getBounds(), m.to)) m.w.setBounds(m.before);
   notesMoved = [];
+  // 汤圆：还在我们挪过去的地方（大小会随内容变，只比位置），就挪回原处
+  if (petMoved && pet && !pet.isDestroyed()) { const [x, y] = pet.getPosition(); if (Math.abs(x - petMoved.to.x) <= 4 && Math.abs(y - petMoved.to.y) <= 4) { pet.setPosition(petMoved.before.x, petMoved.before.y); cfg.pet = { ...petMoved.before }; saveCfg(); } }
+  petMoved = null;
   const before = mainBefore; mainBefore = null; if (!before || !main || main.isDestroyed()) return;
   if (!same(main.getBounds(), mainShrunk)) return;
   main.setBounds(before.bounds); if (before.max) main.maximize();
