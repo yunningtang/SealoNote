@@ -3,7 +3,7 @@
 //  · 便利贴：贴在便签上的笔记。便利贴本身就是一页笔记（note.sticky = 颜色），存在同一个数据库里、跟着账号同步，
 //    默认放在「便利贴」本子里，也可以放进任何一个本子；反过来任何一页笔记也能「贴到便签」。
 // 用在三个地方：侧栏的「便签」页（#/stickies）、网页弹出的小窗口和桌面版的便签窗口（都是 #/sticky，没有侧栏）。
-import { html, useState, useEffect, useMemo, useRef } from '../../vendor/preact.js';
+import { html, useState, useEffect, useMemo, useRef, createPortal } from '../../vendor/preact.js';
 import { useStore, upsert, update, get } from '../store.js';
 import { Icon } from '../ui.js';
 import { todayStr, addDays, sortBy, timeToMin, fmtShort, nowISO, kindColor, mdLabel } from '../util.js';
@@ -140,7 +140,10 @@ const SIMPLE = new Set(['p', 'bullet', 'number', 'todo', 'quote', 'h1', 'h2', 'h
 // 只有简单文字的页面才在便利贴里直接改（表格、图片这些在便利贴里改会丢格式，点开去笔记里改）
 const editable = (n) => !(n.blocks || []).some((b) => !SIMPLE.has(b.type));
 export const stickyList = (s) => s.notes.filter((n) => n.sticky).sort((a, b) => (b.stickyAt || b.updated || '').localeCompare(a.stickyAt || a.updated || ''));
-export function addSticky(color = 'yellow') {
+// 新的一张换个颜色：接着最近一张往下轮（黄 → 粉 → 蓝 → 绿 → 紫），墙上不会一片黄
+const nextColor = () => { const order = ['yellow', 'pink', 'blue', 'green', 'purple']; const last = sortBy(get().notes.filter((n) => n.sticky), '-stickyAt')[0]; const i = last ? order.indexOf(last.sticky) : -1; return order[(i + 1) % order.length]; };
+export function addSticky(color) {
+  color = color || nextColor();
   const nb = ensureNotebook('便利贴', '#c7873a');
   return newNote({ nb: nb.id, sticky: color, stickyAt: nowISO(), title: '', body: '', blocks: [] });
 }
@@ -172,7 +175,7 @@ function useStickyText(n) {
 }
 // 新的一张 / 复制一张：桌面单张窗口里直接再弹一个窗口出来
 export function newSticky({ from, text = '', pop = false } = {}) {
-  const c = addSticky((from && from.sticky) || 'yellow');
+  const c = addSticky(from && from.sticky);
   const body = from ? from.body || '' : text;
   if (body) upsert('notes', { id: c.id, body, blocks: mdToBlocks(body), title: firstLine(body).slice(0, 40) });
   if (pop) popNote(c.id); return c;
@@ -191,7 +194,7 @@ function noteMenuItems(n, s) {
   ].filter(Boolean);
 }
 
-function StickyCard({ n, s, autoFocus, onDone, onOpen }) {
+function StickyCard({ n, s, autoFocus, onDone, onOpen, foot }) {
   const can = editable(n); const ta = useRef(); const tx = useStickyText(n);
   const fit = () => { const el = ta.current; if (!el) return; el.style.height = 'auto'; el.style.height = Math.min(320, el.scrollHeight + 2) + 'px'; };
   useEffect(fit, [tx.text]);
@@ -208,6 +211,7 @@ function StickyCard({ n, s, autoFocus, onDone, onOpen }) {
     <div class="stk-tools"><button type="button" class="stk-b" title="单独贴到桌面（可以随意拖动、放大缩小）" onClick=${() => popNote(n.id)}><${Icon} name="external" size=${12} /></button><button type="button" class="stk-b" title="更多" onClick=${menu}><${Icon} name="dots" size=${13} /></button></div>
     ${can ? html`<textarea ref=${ta} class="stk-ta" rows="2" value=${tx.text} placeholder="写点什么…" onFocus=${tx.onFocus} onBlur=${tx.onBlur} onInput=${tx.onInput}></textarea>`
       : html`<button type="button" class="stk-pre" title="点开看全文" onClick=${() => onOpen(n.id)}>${n.title && html`<b>${n.title}</b>`}<span>${excerpt(n) || '（打开查看）'}</span></button>`}
+    ${foot && html`<div class="stk-foot"><span>${stkWhen(n.updated || n.created)}</span>${!can && html`<span>笔记页</span>`}</div>`}
   </div>`;
 }
 
@@ -332,19 +336,59 @@ export default function Sticky() {
 }
 
 /* ---------- 侧栏里的「便签」页（#/stickies）---------- */
+// 便利贴上的时间：今天 14:20 / 昨天 / 11月3日
+function stkWhen(iso) {
+  if (!iso) return ''; const d = new Date(iso); if (isNaN(d)) return ''; const t = todayStr(); const ds = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  return ds === t ? `今天 ${pad(d.getHours())}:${pad(d.getMinutes())}` : ds === addDays(t, -1) ? '昨天' : `${d.getMonth() + 1}月${d.getDate()}日`;
+}
+// 「从笔记添加」：挑一页笔记钉成便利贴
+function NotePicker({ s, onClose }) {
+  const [q, setQ] = useState(''); const inp = useRef();
+  useEffect(() => { inp.current && inp.current.focus(); const k = (e) => e.key === 'Escape' && onClose(); window.addEventListener('keydown', k); return () => window.removeEventListener('keydown', k); }, []);
+  const list = useMemo(() => { const ql = q.trim().toLowerCase(); return sortBy(s.notes.filter((n) => !n.sticky && (noteTitle(n) || n.body)), '-updated').filter((n) => !ql || (noteTitle(n) + ' ' + (n.body || '')).toLowerCase().includes(ql)).slice(0, 40); }, [s.notes, q]);
+  const pick = (n) => { upsert('notes', { id: n.id, sticky: nextColor(), stickyAt: nowISO() }); toast(`「${noteTitle(n)}」贴上来了`); onClose(); };
+  return createPortal(html`<div class="stp-pick-bg" onClick=${(e) => e.target === e.currentTarget && onClose()}>
+    <div class="stp-pick" role="dialog" aria-label="从笔记添加">
+      <div class="stp-pick-h"><b>把一页笔记贴成便利贴</b><button type="button" class="ms-x" aria-label="关闭" onClick=${onClose}><${Icon} name="x" size=${14} /></button></div>
+      <input ref=${inp} type="search" placeholder="搜笔记标题或内容…" value=${q} onInput=${(e) => setQ(e.target.value)} />
+      <ul>${list.length ? list.map((n) => html`<li key=${n.id}><button type="button" onClick=${() => pick(n)}><${Icon} name="note" size=${14} /><span>${noteTitle(n)}</span><small>${stkWhen(n.updated)}</small></button></li>`) : html`<li class="stp-pick-none">没有找到</li>`}</ul>
+    </div>
+  </div>`, document.body);
+}
+
 export function StickiesPage() {
   const s = useStore();
   // 这一页上没在打字时 Ctrl/⌘+V：剪贴板里的文字贴成一张新便利贴
-  useEffect(() => { const h = (e) => { const el = document.activeElement; if (el && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName))) return; const x = e.clipboardData && e.clipboardData.getData('text/plain'); if (!x || !x.trim()) return; e.preventDefault(); const c = newSticky({ text: x.trim() }); window.dispatchEvent(new CustomEvent('sticky:fresh', { detail: c.id })); toast('贴成了一张新便利贴'); }; window.addEventListener('paste', h); return () => window.removeEventListener('paste', h); }, []);
+  useEffect(() => { const h = (e) => { const el = document.activeElement; if (el && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName))) return; const x = e.clipboardData && e.clipboardData.getData('text/plain'); if (!x || !x.trim()) return; e.preventDefault(); const c = newSticky({ text: x.trim() }); setFresh(c.id); toast('贴成了一张新便利贴'); }; document.addEventListener('paste', h); return () => document.removeEventListener('paste', h); }, []);
   const alpha = s.settings.stickyAlpha == null ? 1 : s.settings.stickyAlpha;
-  return html`<div class="stp" style=${`--stk-a:${Math.round(alpha * 100)}%`}>
-    <div class="stp-h">
-      <b class="stp-title">便利贴</b><small class="muted">每一张都是一页笔记，可以放进本子；Ctrl+V 粘贴文字就是一张新的</small>
+  const list = stickyList(s);
+  const [fresh, setFresh] = useState(''); const [pick, setPick] = useState(false); const [opt, setOpt] = useState(false);
+  useEffect(() => { const h = (e) => setFresh(e.detail); window.addEventListener('sticky:fresh', h); return () => window.removeEventListener('sticky:fresh', h); }, []);
+  const add = () => setFresh(addSticky().id);
+  return html`<div class="stp stp2" style=${`--stk-a:${Math.round(alpha * 100)}%`}>
+    <div class="stp2-h">
+      <div><h1>便利贴</h1><p>${list.length ? `${list.length} 张 · 每张都是一页笔记，自动保存` : '随手记的东西贴在这里'}</p></div>
       <span class="flex1"></span>
-      <label class="stp-op" title="便利贴的透明度"><${Icon} name="eye" size=${13} /><input type="range" min="30" max="100" step="5" value=${Math.round(alpha * 100)} onInput=${(e) => update((d) => { d.settings.stickyAlpha = +e.target.value / 100; })} /><span>${Math.round(alpha * 100)}%</span></label>
-      <button type="button" class="btn sm" onClick=${() => popSticky('notes')} title="弹出便签小窗口，可以放在桌面上"><${Icon} name="tack" size=${13} />${inApp() ? '桌面便签' : '弹出小窗口'}</button>
+      <button type="button" class="btn sm ghost" onClick=${() => setPick(true)}><${Icon} name="note" size=${14} />从笔记添加</button>
+      <div class="stp2-pop">
+        <button type="button" class="btn sm ghost" onClick=${() => popSticky('notes')} title="弹出便签小窗口，可以放在桌面上"><${Icon} name="tack" size=${14} />${inApp() ? '桌面便签' : '弹出小窗口'}</button>
+        <button type="button" class=${'btn sm ghost stp2-more ' + (opt ? 'on' : '')} aria-label="小窗口设置" aria-expanded=${opt} onClick=${() => setOpt(!opt)}><${Icon} name="down" size=${13} /></button>
+        ${opt && html`<div class="stp2-opt" onMouseLeave=${() => setOpt(false)}><label><span>小窗口透明度</span><input type="range" min="30" max="100" step="5" value=${Math.round(alpha * 100)} onInput=${(e) => update((d) => { d.settings.stickyAlpha = +e.target.value / 100; })} /><b>${Math.round(alpha * 100)}%</b></label><small>只影响弹出到桌面的便利贴</small></div>`}
+      </div>
+      <button type="button" class="btn sm primary" onClick=${add}><${Icon} name="plus" size=${14} />新便利贴</button>
     </div>
-    <div class="stp-body"><${NotesPane} s=${s} page onOpen=${(id) => go('notes/' + id)} /></div>
+    ${list.length === 0 ? html`<div class="stp2-empty">
+        <div class="stp2-demo" aria-hidden="true"><i class="stk-yellow"></i><i class="stk-pink"></i><i class="stk-blue"></i></div>
+        <b>随手记的东西贴在这里</b>
+        <p>一张便利贴就是一页笔记：会同步，也能放进任何本子。按 Ctrl+V 直接把剪贴板里的文字贴成一张。</p>
+        <div class="stp2-empty-act"><button type="button" class="btn primary" onClick=${add}><${Icon} name="plus" size=${14} />贴第一张</button><button type="button" class="btn ghost" onClick=${() => setPick(true)}>从笔记添加</button></div>
+      </div>`
+      : html`<div class="stp2-wall">
+        ${list.map((n) => html`<${StickyCard} key=${n.id} n=${n} s=${s} foot onOpen=${(id) => go('notes/' + id)} autoFocus=${fresh === n.id} onDone=${() => setFresh('')} />`)}
+        <button type="button" class="stp2-add" onClick=${add} aria-label="新便利贴"><${Icon} name="plus" size=${20} /><span>新便利贴</span></button>
+      </div>`}
+    <p class="stp2-tip"><${Icon} name="cursor" size=${12} />鼠标移到便利贴上：右上角可以单独贴到桌面、换颜色；按住顶边拖出窗口，就变成一张独立的桌面便利贴</p>
+    ${pick && html`<${NotePicker} s=${s} onClose=${() => setPick(false)} />`}
   </div>`;
 }
 
