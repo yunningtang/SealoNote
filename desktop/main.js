@@ -6,7 +6,7 @@
 //  · 汤圆（#/seal）：AI 对话单独一个窗口
 //  · 桌面汤圆（#/pet）：透明的小窗口，汤圆坐在桌面上，跟着你打字拍鳍、显示番茄钟；只数按键次数，不记按了什么
 // Windows / Linux 上所有窗口都没有系统标题栏：网页自己画标题栏和最小化 / 最大化 / 关闭按钮，和界面融在一起。
-const { app, BrowserWindow, Tray, Menu, shell, ipcMain, nativeImage, screen, session, systemPreferences } = require('electron');
+const { app, BrowserWindow, Tray, Menu, shell, ipcMain, nativeImage, screen, session, systemPreferences, utilityProcess } = require('electron');
 const path = require('path');
 const fs = require('fs');
 
@@ -182,8 +182,7 @@ function createPet() {
   const at = cfg.pet && onScreen({ ...cfg.pet, width: PET_W, height: PET_H }) ? cfg.pet : defaultPetPos();
   const k = petScale(); const [pw, ph] = petDims(k); pet = new BrowserWindow({ x: at.x, y: at.y, width: pw, height: ph, frame: false, transparent: true, backgroundColor: '#00000000', hasShadow: false, resizable: false, maximizable: false, minimizable: false, fullscreenable: false, skipTaskbar: true, show: false, title: '汤圆', icon: ICON, webPreferences: { ...webPrefs(), backgroundThrottling: false, zoomFactor: k } });
   pet.setAlwaysOnTop(true, 'floating'); pet.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: false });
-  // 透明的地方点下去穿到后面去：先整窗穿透（鼠标移动照样转给网页），鼠标到了汤圆身上网页再说一声「接住」（Linux 不支持转发，就不穿透）
-  if (process.platform !== 'linux') pet.setIgnoreMouseEvents(true, { forward: true });
+  // 不再用「点击穿透」：Windows 上它要装一个全局鼠标钩子，主进程一忙整台电脑的鼠标都会卡。改成窗口只有汤圆那么大（网页量好尺寸告诉这里）
   guard(pet);
   pet.once('ready-to-show', () => { pet.webContents.setZoomFactor(petScale()); pet.showInactive(); });
   pet.on('close', (e) => { if (!quitting) { e.preventDefault(); hidePet(); } });
@@ -194,13 +193,30 @@ function createPet() {
 const petScale = () => Math.max(.6, Math.min(1.8, Number(cfg.petScale) || 1));
 // 变大变小：窗口跟着缩放，汤圆脚下那一点不动（底边中间对齐）
 const ROOM_W = 380, ROOM_H = 400;
-const petDims = (k = petScale()) => (cfg.petRoom ? [ROOM_W, ROOM_H] : [PET_W, PET_H]).map((v) => Math.round(v * k));
+const petDims = (k = petScale()) => (cfg.petRoom ? [ROOM_W, ROOM_H] : cfg.petFit ? cfg.petFit : [PET_W, PET_H]).map((v) => Math.round(v * k));
 // 打开 / 关上房间：窗口变大变小，脚下那一点不动
 function setPetRoom(on) {
   cfg.petRoom = !!on; saveCfg(); if (!pet || pet.isDestroyed()) return cfg.petRoom;
   const b = pet.getBounds(); const [w, h] = petDims(); const x = Math.round(b.x + b.width / 2 - w / 2), y = b.y + b.height - h;
   pet.setBounds({ x, y, width: w, height: h }); cfg.pet = { x, y }; saveCfg(); return cfg.petRoom;
 }
+// 网页量好内容的大小（CSS 像素）：窗口刚好这么大，底边中间不动——没有透明的空白挡着后面的东西
+function fitPet(w, h) {
+  w = Math.max(80, Math.min(600, Math.round(w))); h = Math.max(80, Math.min(700, Math.round(h)));
+  if (!cfg.petRoom) { cfg.petFit = [w, h]; saveCfg(); }
+  if (!pet || pet.isDestroyed() || cfg.petRoom || dragT) return;
+  const k = petScale(); const b = pet.getBounds(); const W = Math.round(w * k), H = Math.round(h * k);
+  if (Math.abs(W - b.width) < 2 && Math.abs(H - b.height) < 2) return;
+  const x = Math.round(b.x + b.width / 2 - W / 2), y = b.y + b.height - H;
+  pet.setBounds({ x, y, width: W, height: H }); cfg.pet = { x, y }; saveCfg();
+}
+// 拖动：按下以后由这里跟着鼠标挪窗口（每秒 60 次），不用网页每动一下发一次消息
+let dragT = null;
+function petDragStart(ox, oy) {
+  if (!pet || pet.isDestroyed()) return; clearInterval(dragT);
+  dragT = setInterval(() => { if (!pet || pet.isDestroyed()) { clearInterval(dragT); dragT = null; return; } const c = screen.getCursorScreenPoint(); const [x, y] = pet.getPosition(); const nx = Math.round(c.x - ox), ny = Math.round(c.y - oy); if (nx !== x || ny !== y) pet.setPosition(nx, ny); }, 16);
+}
+function petDragEnd() { clearInterval(dragT); dragT = null; if (pet && !pet.isDestroyed()) { const [x, y] = pet.getPosition(); cfg.pet = { x, y }; saveCfg(); } }
 function setPetScale(k) {
   k = Math.max(.6, Math.min(1.8, Number(k) || 1)); cfg.petScale = k; saveCfg();
   if (!pet || pet.isDestroyed()) return k;
@@ -214,22 +230,25 @@ function hidePet() { if (pet && !pet.isDestroyed()) pet.hide(); cfg.petOn = fals
 
 // 数按键：只在这里加一，按的是哪个键不存、不传。按住不放（自动重复）只算一下
 const day = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
-let hook = null, keysErr = '', lastSend = 0; const down = new Set();
-function keyStats() { const k = cfg.keys || {}; const today = k[day()] || 0; const total = Object.values(k).reduce((a, b) => a + b, 0); return { today, total, on: cfg.countKeys !== false, running: !!hook, needsPermission: MAC && !systemPreferences.isTrustedAccessibilityClient(false), error: keysErr }; }
-function onKey(e) {
-  if (down.has(e.keycode)) return; down.add(e.keycode);
-  cfg.keys = cfg.keys || {}; const d = day(); cfg.keys[d] = (cfg.keys[d] || 0) + 1;
-  const keep = Object.keys(cfg.keys).sort().slice(-400); if (keep.length < Object.keys(cfg.keys).length) cfg.keys = Object.fromEntries(keep.map((k) => [k, cfg.keys[k]]));
+let worker = null, keysErr = '';
+function keyStats() { const k = cfg.keys || {}; const today = k[day()] || 0; const total = Object.values(k).reduce((a, b) => a + b, 0); return { today, total, on: cfg.countKeys !== false, running: !!worker, needsPermission: MAC && !systemPreferences.isTrustedAccessibilityClient(false), error: keysErr }; }
+function addKeys(n) {
+  cfg.keys = cfg.keys || {}; const d = day(); cfg.keys[d] = (cfg.keys[d] || 0) + n;
+  const ks = Object.keys(cfg.keys); if (ks.length > 400) cfg.keys = Object.fromEntries(ks.sort().slice(-400).map((k) => [k, cfg.keys[k]]));
   saveCfg();
-  const now = Date.now(); if (pet && !pet.isDestroyed() && now - lastSend > 45) { lastSend = now; pet.webContents.send('pet:key', { today: cfg.keys[d] }); }
+  if (pet && !pet.isDestroyed()) pet.webContents.send('pet:key', { today: cfg.keys[d], n });
 }
+// 键盘钩子放在单独的后台进程里（keys-worker.js），只把「这一小段按了几下」发过来
 function startKeys() {
-  if (hook || cfg.countKeys === false) return;
+  if (worker || cfg.countKeys === false) return;
   if (MAC && !systemPreferences.isTrustedAccessibilityClient(false)) { keysErr = 'needs-permission'; return; } // macOS 要先在「辅助功能」里允许
-  try { const { uIOhook } = require('uiohook-napi'); uIOhook.on('keydown', onKey); uIOhook.on('keyup', (e) => down.delete(e.keycode)); uIOhook.start(); hook = uIOhook; keysErr = ''; }
-  catch (err) { hook = null; keysErr = String((err && err.message) || err); }
+  try {
+    worker = utilityProcess.fork(path.join(__dirname, 'keys-worker.js'), [], { serviceName: 'SealoNote key counter' });
+    worker.on('message', (m) => { if (m && m.n) addKeys(m.n); else if (m && m.error) { keysErr = m.error; stopKeys(); } else if (m && m.ok) keysErr = ''; });
+    worker.on('exit', () => { worker = null; });
+  } catch (err) { worker = null; keysErr = String((err && err.message) || err); }
 }
-function stopKeys() { if (hook) { try { hook.stop(); } catch {} hook = null; } }
+function stopKeys() { if (worker) { try { worker.postMessage('stop'); setTimeout(() => { try { worker && worker.kill(); } catch {} }, 500); } catch {} worker = null; } }
 
 function setPin(win, on) { if (win && !win.isDestroyed()) win.setAlwaysOnTop(!!on, 'floating'); }
 
@@ -305,7 +324,10 @@ else {
     ipcMain.handle('pet:stats', () => keyStats());
     ipcMain.handle('pet:setScale', (_e, k) => setPetScale(k));
     ipcMain.handle('pet:setRoom', (_e, on) => setPetRoom(on));
-    ipcMain.on('pet:hit', (_e, hit) => { if (pet && !pet.isDestroyed() && process.platform !== 'linux') pet.setIgnoreMouseEvents(!hit, { forward: true }); });
+    ipcMain.on('pet:hit', () => {}); // 0.6.3 的网页还会调；现在不穿透了
+    ipcMain.on('pet:fit', (_e, w, h) => fitPet(Number(w), Number(h)));
+    ipcMain.on('pet:dragStart', (_e, ox, oy) => petDragStart(Number(ox) || 0, Number(oy) || 0));
+    ipcMain.on('pet:dragEnd', () => petDragEnd());
     ipcMain.handle('pet:setCount', (_e, on) => { cfg.countKeys = !!on; saveCfg(); if (on) { if (MAC && !systemPreferences.isTrustedAccessibilityClient(true)) { keysErr = 'needs-permission'; return keyStats(); } startKeys(); } else stopKeys(); return keyStats(); });
     ipcMain.handle('titlebar:set', () => {}); // 0.2 的网页还会调；现在按钮由网页自己画
 

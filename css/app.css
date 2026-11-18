@@ -5105,3 +5105,43 @@ img.pet-doll{width:auto;height:auto;max-width:200px}
 .room-seal img.pet-doll{width:100%!important;height:auto!important;max-width:none}
 .pet-dress-prev img.pet-doll{width:auto!important;height:auto!important;max-width:170px;max-height:170px}
 .pet.preview{height:auto;min-height:220px;justify-content:center}
+/* ---- 桌面汤圆 v3：窗口刚好包住内容；头顶一格放按钮 / 计时 / 说的话；底下的数字只在打字或鼠标停在汤圆上时出现 ---- */
+.pet{--pet-ink:#1f1e1c;--pet-mute:#8e8d88;--pet-bg:#fff;--pet-line:rgba(0,0,0,.06);gap:4px;padding:0 6px 6px}
+.pet.fit{width:max-content;min-width:172px;height:auto;justify-content:flex-start}
+.pet-top{height:36px;display:flex;align-items:flex-end;justify-content:center;width:100%}
+.pet-slot{height:1px}
+.pet .pet-stage{display:flex;align-items:flex-end;justify-content:center;margin-top:-2px}
+.pet-doll{position:relative;animation:pet-breathe 3.6s ease-in-out infinite}
+.pet-doll img{position:absolute;inset:0;width:100%;height:100%;opacity:0;user-select:none;-webkit-user-drag:none;pointer-events:none}
+.pet-doll img.on{opacity:1}
+.pet-doll.hop{animation:pet-hop .5s cubic-bezier(.3,1.5,.5,1),pet-breathe 3.6s ease-in-out .5s infinite}
+@keyframes pet-hop{0%{transform:translateY(0) scale(1)}30%{transform:translateY(-9px) scale(.97,1.04)}60%{transform:translateY(0) scale(1.05,.95)}100%{transform:none}}
+.pet-doll-w{transition:transform .14s ease-out;transform-origin:50% 92%}
+/* 头顶：一排圆按钮 */
+.pet-bar{display:flex;gap:6px;padding:4px;border-radius:999px;background:var(--pet-bg);box-shadow:0 0 0 1px var(--pet-line),0 6px 16px -8px rgba(0,0,0,.28);animation:pet-in .14s ease-out}
+.pet-bar .pb{width:28px;height:28px;border:0;border-radius:50%;background:transparent;color:#55534e;display:grid;place-items:center;cursor:pointer;transition:background .12s,color .12s}
+.pet-bar .pb:hover{background:#f1f0ec;color:var(--pet-ink)}.pet-bar .pb.on{background:var(--pet-ink);color:#fff}
+@keyframes pet-in{from{opacity:0;transform:translateY(4px) scale(.96)}to{opacity:1;transform:none}}
+/* 头顶：计时（小胶囊）、说的话（气泡） */
+.pet-chip{display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 11px 0 6px;border:0;border-radius:999px;background:var(--pet-bg);box-shadow:0 0 0 1px var(--pet-line),0 6px 16px -8px rgba(0,0,0,.28);font:inherit;color:var(--pet-ink);cursor:pointer}
+.pet-timer b{font-size:13.5px;font-weight:600;font-variant-numeric:tabular-nums;letter-spacing:.01em}.pet-timer small{font-size:11px;color:var(--pet-mute)}
+.pet-timer svg{transform:rotate(-90deg)}.pet-timer .tr{fill:none;stroke:#ecebe7;stroke-width:3}.pet-timer .fg{fill:none;stroke:#e0894f;stroke-width:3;stroke-linecap:round;transition:stroke-dashoffset 1s linear}
+.pet-timer.break .fg{stroke:#4a9a6a}.pet-timer.paused .fg{stroke:#b5b4af}
+.pet-bubble{position:relative;max-width:200px;padding:6px 11px;border-radius:13px;background:var(--pet-bg);color:var(--pet-ink);font-size:12.5px;line-height:1.35;box-shadow:0 0 0 1px var(--pet-line),0 6px 16px -8px rgba(0,0,0,.28);animation:pet-in .16s ease-out;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pet-bubble::after{content:"";position:absolute;left:50%;bottom:-4px;width:8px;height:8px;margin-left:-4px;background:var(--pet-bg);transform:rotate(45deg);box-shadow:1px 1px 0 var(--pet-line)}
+/* 底下：今天敲了几下 */
+.pet-count{height:20px;font-size:11.5px;color:var(--pet-mute);opacity:0;transition:opacity .4s;display:flex;align-items:center;justify-content:center;gap:3px}
+.pet-count.on{opacity:1}.pet-count b{color:#55534e;font-weight:600;font-variant-numeric:tabular-nums}
+/* 更多：在汤圆头顶上方展开（窗口跟着长高），不盖住汤圆 */
+.pet-panel{width:188px;padding:5px;margin-bottom:2px;border-radius:14px;background:var(--pet-bg);box-shadow:0 0 0 1px var(--pet-line),0 10px 28px -12px rgba(0,0,0,.32);animation:pet-in .14s ease-out;cursor:default}
+.pp-row{display:flex;align-items:baseline;justify-content:space-between;gap:8px;width:100%;border:0;background:none;padding:7px 9px;border-radius:9px;font:inherit;font-size:12.5px;color:var(--pet-ink);cursor:pointer;text-align:left}
+.pp-row:hover{background:#f4f3ef}.pp-row small{font-size:10.5px;color:var(--pet-mute)}
+.pp-size{display:flex;align-items:center;justify-content:space-between;padding:5px 9px 7px;font-size:12.5px;color:var(--pet-ink);border-bottom:1px solid #f1f0ec;margin-bottom:3px}
+.pp-size div{display:flex;gap:2px;background:#f4f3ef;border-radius:8px;padding:2px}
+.pp-size button{border:0;background:none;padding:3px 7px;border-radius:6px;font:inherit;font-size:11.5px;color:#6b6a65;cursor:pointer}.pp-size button.on{background:#fff;color:var(--pet-ink);box-shadow:0 1px 2px rgba(0,0,0,.12)}
+/* 老样式里的东西不要了 */
+.pet .pet-say,.pet .pet-pomo,.pet .pet-keys,.pet .pet-menu{display:none}
+.pet.room-mode .pet-top{height:36px}
+.pet.preview .pet-bubble{margin-bottom:6px}
+@media (prefers-reduced-motion:reduce){.pet-doll,.pet-doll.hop{animation:none}}
+.room-seal .pet-doll,.pet-dress-prev .pet-doll{max-width:100%}.room-seal .pet-doll{width:100%!important;height:auto!important}
