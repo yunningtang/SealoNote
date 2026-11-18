@@ -111,8 +111,21 @@ export default function TodayView({ route } = {}) {
   const setDays = (v) => { setN(v); lsSet('td.days', String(v)); if (v === 'month') setFrom(day); };
   const ym = parseDate(from);
 
-  return html`<div class="td" style=${`--cols:${n}`}>
-    <section class="td-list">
+  const goDay = (k) => { if (isMonth) { setFrom(shiftMonth(from, k)); return; } const d = addDays(day, k * (n > 1 ? n : 1)); setDay(d); setFrom(n > 1 ? addDays(from, k * n) : d); };
+  const goToday = () => { setDay(today); setFrom(today); };
+  return html`<div class="td-page">
+  ${!narrow && html`<div class="page-h">
+    <div class="desc"><b class="td-ph-day">${wd(day)}，${Number(day.slice(5, 7))}月${Number(day.slice(8))}日</b>${day === today && html`<span class="td-ph-today">今天</span>`}<span class="td-ph-sum">${sumLine}</span></div>
+    <div class="acts">
+      <${IconBtn} icon="left" title=${isMonth ? '上个月' : n > 1 ? `往前 ${n} 天` : '前一天'} onClick=${() => goDay(-1)} />
+      <${Btn} small kind="ghost" disabled=${day === today && (isMonth ? from.slice(0, 7) === today.slice(0, 7) : from === today)} onClick=${goToday}>今天<//>
+      <${IconBtn} icon="right" title=${isMonth ? '下个月' : n > 1 ? `往后 ${n} 天` : '后一天'} onClick=${() => goDay(1)} />
+      <${Seg} value=${isMonth ? 'month' : n} onChange=${setDays} options=${[{ v: 1, label: '1 天' }, { v: 3, label: '3 天' }, { v: 5, label: '5 天' }, { v: 7, label: '7 天' }, { v: 'month', label: '月' }]} />
+      <${Btn} small kind="primary" icon="plus" onClick=${() => setBlk({ date: day, start: '09:00', kind: '' })}>时间块<//>
+    </div>
+  </div>`}
+  <div class="td" style=${`--cols:${n}`}>
+    <section class="td-list card">
       ${narrow && html`<div class="tdm-top">
         <button type="button" class="tdm-glass tdm-back" disabled=${day === today} onClick=${() => { setDay(today); setFrom(today); }}>回到今天</button>
         <div class="tdm-glass tdm-acts"><button type="button" aria-label="新建时间块" onClick=${() => setBlk({ date: day, start: '09:00', kind: '' })}><${Icon} name="plus" size=${20} /></button></div>
@@ -124,7 +137,7 @@ export default function TodayView({ route } = {}) {
           ${week.map((d) => html`<button type="button" key=${d} class=${'tdm-d' + (d === day ? ' on' : '') + (d === today ? ' today' : '')} aria-current=${d === day ? 'date' : undefined} onClick=${() => setDay(d)}><small>${wd(d).slice(1)}</small><b>${Number(d.slice(8))}</b>${counts[d] > 0 && d !== day && html`<i></i>`}</button>`)}
           <button type="button" class="tdm-arr" aria-label="下一周" onClick=${() => setDay(addDays(day, 7))}><${Icon} name="right" size=${15} /></button>
         </div>`}
-        <h2 class="td-h2">${dayLabel(day)}</h2>
+        <div class="card-h td-ch"><h3>当天待办</h3><span class="muted small">${L.done.length}/${L.todo.length + L.cal.length + L.done.length}</span></div>
         <div class="td-date">
           <${IconBtn} icon="left" size=${13} title="前一天" onClick=${() => setDay(addDays(day, -1))} />
           <span>${wd(day)}，${Number(day.slice(5, 7))}月${Number(day.slice(8))}日</span>
@@ -154,16 +167,8 @@ export default function TodayView({ route } = {}) {
       </div>
     </section>
 
-    <section class="td-cal">
-      <div class="td-cal-h">
-        <b>${ym.getFullYear()}年${ym.getMonth() + 1}月</b>
-        <div class="td-nav">
-          <${IconBtn} icon="left" size=${14} title=${isMonth ? '上个月' : `往前 ${n} 天`} onClick=${() => setFrom(isMonth ? shiftMonth(from, -1) : addDays(from, -n))} />
-          <${Btn} small kind="ghost" disabled=${isMonth ? from.slice(0, 7) === today.slice(0, 7) : from === today} onClick=${() => { setFrom(today); setDay(today); }}>今天<//>
-          <${IconBtn} icon="right" size=${14} title=${isMonth ? '下个月' : `往后 ${n} 天`} onClick=${() => setFrom(isMonth ? shiftMonth(from, 1) : addDays(from, n))} />
-        </div>
-        <${Seg} value=${isMonth ? 'month' : n} onChange=${setDays} options=${[{ v: 1, label: '1 天' }, { v: 3, label: '3 天' }, ...(narrow ? [] : [{ v: 5, label: '5 天' }, { v: 7, label: '7 天' }, { v: 'month', label: '月' }])]} />
-      </div>
+    <section class="td-cal card">
+      <div class="td-cal-h"><h3>${isMonth ? `${ym.getFullYear()}年${ym.getMonth() + 1}月` : '时间线'}</h3>${!isMonth && html`<span class="muted small">${ym.getFullYear()}年${ym.getMonth() + 1}月</span>`}</div>
       ${isMonth ? html`<${MonthGrid} s=${s} from=${from} day=${day} today=${today} onPick=${setDay} onOpenDay=${(d) => { setDays(1); setFrom(d); setDay(d); }} onBlock=${(b) => setBlk({ block: b })} onTodo=${setTEdit} />` : html`<div class="td-cols">
       <div class="td-days">
         <span class="td-gut"></span>
@@ -192,5 +197,6 @@ export default function TodayView({ route } = {}) {
     </section>`}
     <${TodoModal} open=${!!tEdit} todo=${tEdit} onClose=${() => setTEdit(null)} />
     <${BlockModal} open=${!!blk} block=${blk && blk.block} date=${blk && (blk.date || (blk.block && blk.block.date))} start=${(blk && blk.start) || '09:00'} kind=${(blk && blk.kind) || ''} onClose=${() => setBlk(null)} />
+  </div>
   </div>`;
 }

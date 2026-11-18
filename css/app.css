@@ -5556,3 +5556,53 @@ html[data-theme="dark"] .lk-new{background:#4a3218;color:#f2b36f}
 .tdmo-i span{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .tdmo-more{border:0;background:none;font:inherit;font-size:.68rem;color:var(--text-3);text-align:left;padding:1px 4px;cursor:pointer}.tdmo-more:hover{color:rgb(var(--ac))}
 .tdmo-c{gap:1px;padding-bottom:2px}.tdmo-n{margin-bottom:1px}.tdmo-i{padding:1px 4px;line-height:1.35}
+/* ---------- 「今天」和待办 / 计划统一：页头 = 左边一行说明 + 右边按钮；两张分开的卡片；行和分组跟待办页一样 ---------- */
+@media(min-width:701px){
+  .td-page>.page-h .desc{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+  .td-ph-day{font-size:1.05rem;font-weight:700;color:var(--text)}
+  .td-ph-today{color:var(--blue);font-weight:600;font-size:var(--fs-sm)}
+  .td-ph-sum{color:var(--text-3)}
+  .td{border:0;border-radius:0;background:transparent;overflow:visible;gap:16px;height:calc(100vh - 140px);grid-template-columns:minmax(300px,360px) minmax(0,1fr)}
+  .td-list.card{padding:16px 16px 0;border-right:0}
+  .td-cal.card{padding:0}
+  .td-head .td-date,.td-sum{display:none}
+  .td-ch{margin-bottom:10px}
+  .td-cal-h{display:flex;align-items:baseline;gap:8px;padding:16px 16px 10px;border-bottom:1px solid var(--line)}
+  .td-cal-h h3{font-size:var(--fs-lg);font-weight:600;letter-spacing:-.01em;margin:0}
+  /* 待办行：和待办页一样是平的，不再一行一个框 */
+  .td-row{border:0;border-radius:var(--r2);margin:0;background:transparent;box-shadow:none!important}
+  .td-row:hover{background:var(--hover)}
+  .td-put{background:none;padding:0;margin:-6px 0 6px 38px;font-size:.72rem}.td-put:hover{background:none;text-decoration:underline}
+  .td-when{margin:-6px 0 6px 38px}
+  /* 分组标题：和待办页的「今天 —— 3」一样 */
+  .td-sec{margin-top:4px}
+  .td-sec-t{width:100%;font-size:var(--fs-xs);font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text-4);padding:12px 6px 6px;gap:8px}
+  .td-sec-t span{order:3;font-weight:600;color:var(--text-4)}
+  .td-sec-t::after{content:"";order:2;flex:1;height:1px;background:var(--line)}
+  .td-sec-h{margin-bottom:0}
+  /* 日期头：和周时间线一样，上面小字星期、下面日期，今天是实心圆 */
+  .td-day{flex-direction:column;gap:1px;padding:6px 4px}
+  .td-day small{font-size:.66rem;color:var(--text-3)}.td-day b{font-size:1rem;font-weight:600;min-width:26px;height:26px;line-height:26px;border-radius:50%;color:var(--text)}
+  .td-day.today b{background:var(--now,var(--blue));color:#fff}
+  .td-day.sel:not(.today) b{background:var(--hover)}
+  .td-day.sel{box-shadow:none}
+  .td-day i{font-size:.62rem;background:none;padding:0;color:var(--text-4)}
+  .td-tip{margin:12px 6px 14px}
+}
+/* 阅读 / 收藏 / 便利贴的页头跟待办、计划一样：不放大标题（左上角已经有页面名），左边一行说明、右边按钮。手机照 iOS 设计稿保留大标题 */
+@media(min-width:721px){
+  .rd2-h,.lk2-h,.stp2-h{margin:2px 0 0;min-height:36px;gap:6px}
+  .rd2-h h1,.lk2-h h1,.stp2-h h1{display:none}
+  .rd2-h p,.lk2-h p,.stp2-h p{margin:0;font-size:var(--fs-sm);color:var(--text-3)}
+  .rd2,.stp2{gap:12px}
+}
+@media(min-width:721px){
+  .rd2-sh{font-size:var(--fs-xs);font-weight:600;letter-spacing:.06em;color:var(--text-4);padding:10px 6px 0;align-items:center;gap:8px}
+  .rd2-sh span{order:3;font-weight:600}
+  .rd2-sh::after{content:"";order:2;flex:1;height:1px;background:var(--line)}
+}
+@media(max-width:700px){
+  .td-list.card{background:transparent!important;box-shadow:none!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important;overflow:visible;border-radius:0;padding:0}
+  .td-ch{display:none}
+  .td-cal.card{border-radius:22px;background:var(--paper)!important;box-shadow:none}
+}
