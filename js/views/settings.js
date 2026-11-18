@@ -291,7 +291,10 @@ export default function Settings() {
         <${Row} icon="sparkle" label="毛玻璃" hint="老电脑上可能会卡"><${Switch} label="毛玻璃" on=${s.settings.fx === 'full'} onChange=${(v) => update((d) => { d.settings.fx = v ? 'full' : 'lite'; })} /><//>
       <//>
     <//>`,
-    dash: () => html`<${Page} title="总览" sub="选择总览上显示哪些卡片">
+    dash: () => html`<${Page} title="总览" sub="打开时先看哪一页，总览上显示哪些卡片">
+      <${Group}>
+        <${Row} icon="sun" label="打开时显示" hint="打开网页或桌面版时先进哪一页"><${Seg} value=${s.settings.startPage || 'today'} onChange=${(v) => update((d) => { d.settings.startPage = v; })} options=${[{ v: 'today', label: '今天' }, { v: 'home', label: '总览' }, { v: 'last', label: '上次看的' }]} /><//>
+      <//>
       <${Group}>
         ${WIDGETS.map(([id, label]) => html`<${Row} key=${id} icon=${WIDGET_ICON[id] || 'grid'} label=${label}><${Switch} label=${label} on=${!dash.hidden.includes(id)} onChange=${(v) => update((d) => { d.settings.dash = toggleWidget(d.settings.dash, id, v); })} /><//>`)}
       <//>
@@ -383,7 +386,7 @@ export default function Settings() {
     <//>`,
   };
   const ql = q.trim().toLowerCase();
-  const hit = (label, id) => !ql || label.toLowerCase().includes(ql) || ({ account: '帐号账号登录同步邮箱名字头像', look: '主题深浅暗色毛玻璃', dash: '卡片图片小组件', seal: '海豹光效强调色', ai: '模型密钥deepseekclaude用量', prompts: '提示词', claude: 'mcp claude 连接器 连接', data: '备份导入导出清空', keys: '快捷键' }[id] || '').includes(ql);
+  const hit = (label, id) => !ql || label.toLowerCase().includes(ql) || ({ account: '帐号账号登录同步邮箱名字头像', look: '主题深浅暗色毛玻璃', dash: '卡片图片小组件打开时显示首页起始页今天', seal: '海豹光效强调色', ai: '模型密钥deepseekclaude用量', prompts: '提示词', claude: 'mcp claude 连接器 连接', data: '备份导入导出清空', keys: '快捷键' }[id] || '').includes(ql);
 
   return html`<div class="sx">
     ${histOpen && html`<${HistoryModal} onClose=${() => setHistOpen(false)} />`}

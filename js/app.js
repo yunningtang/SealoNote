@@ -296,6 +296,18 @@ if (BARE) {
   matchMedia('(prefers-color-scheme: dark)').addEventListener('change', themeNow);
 }
 await initI18n(); // 英文界面：先把词典准备好，免得先闪一下中文
+// 打开时先进哪一页（设置 → 总览 → 打开时显示）：默认「今天」；「上次看的」记在本机
+if (!BARE) {
+  const KEY = 'ytos.lastRoute';
+  if (!/^#\/./.test(location.hash)) {
+    const pref = (get().settings || {}).startPage || 'today';
+    let to = pref === 'home' ? 'home' : 'today';
+    if (pref === 'last') { try { const v = localStorage.getItem(KEY) || ''; if (/^#\/[\w-]/.test(v)) to = v.slice(2); } catch {} }
+    history.replaceState(null, '', '#/' + to);
+  }
+  const remember = () => { if (/^#\/(settings|seal|sticky|pet)\b/.test(location.hash)) return; try { localStorage.setItem(KEY, location.hash); } catch {} };
+  remember(); window.addEventListener('hashchange', remember);
+}
 render(BARE === 'seal' ? html`<${Seal} standalone />` : BARE === 'pet' ? html`<${Pet} />` : BARE ? html`<${Sticky} />` : html`<${App} />`, document.getElementById('app'));
 // 过了半夜（桌面版、标签页一直开着）：「今天」换了，整个界面重新算一遍——没在打字时直接刷新；窗口重新回到前台时也看一眼
 (() => {
