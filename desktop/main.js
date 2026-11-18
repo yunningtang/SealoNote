@@ -6,7 +6,7 @@
 //  · 汤圆（#/seal）：AI 对话单独一个窗口
 //  · 桌面汤圆（#/pet）：透明的小窗口，汤圆坐在桌面上，跟着你打字拍鳍、显示番茄钟；只数按键次数，不记按了什么
 // Windows / Linux 上所有窗口都没有系统标题栏：网页自己画标题栏和最小化 / 最大化 / 关闭按钮，和界面融在一起。
-const { app, BrowserWindow, Tray, Menu, shell, ipcMain, nativeImage, screen, session, systemPreferences, utilityProcess } = require('electron');
+const { app, BrowserWindow, Tray, Menu, shell, ipcMain, nativeImage, screen, session, systemPreferences, utilityProcess, powerMonitor } = require('electron');
 const path = require('path');
 const fs = require('fs');
 
@@ -30,9 +30,12 @@ const notes = new Map(); // noteId → BrowserWindow
 // ---- 设置（窗口位置、便签是否置顶 / 是否开着、开机启动）----
 const cfgFile = () => path.join(app.getPath('userData'), 'window-state.json');
 let cfg = {};
-function loadCfg() { try { cfg = JSON.parse(fs.readFileSync(cfgFile(), 'utf8')); } catch { cfg = {}; } cfg.notes = cfg.notes || {}; }
+// 读坏了（写到一半断电、文件被改坏）就用上一次的临时文件，再不行用默认值
+function loadCfg() { cfg = {}; for (const f of [cfgFile(), cfgFile() + '.tmp']) { try { const v = JSON.parse(fs.readFileSync(f, 'utf8')); if (v && typeof v === 'object') { cfg = v; break; } } catch {} } cfg.notes = cfg.notes && typeof cfg.notes === 'object' ? cfg.notes : {}; }
+// 先写临时文件再换过去：写到一半崩了也不会把原来的设置弄坏
 let saveT = null;
-function saveCfg() { clearTimeout(saveT); saveT = setTimeout(() => { try { fs.writeFileSync(cfgFile(), JSON.stringify(cfg, null, 2)); } catch {} }, 300); }
+function writeCfgNow() { try { const tmp = cfgFile() + '.tmp'; fs.writeFileSync(tmp, JSON.stringify(cfg, null, 2)); fs.renameSync(tmp, cfgFile()); } catch {} }
+function saveCfg() { clearTimeout(saveT); saveT = setTimeout(writeCfgNow, 300); }
 // 记下来的位置要还在某个屏幕上，不然（拔了外接屏）就用默认位置
 function onScreen(b) {
   if (!b) return false;
@@ -198,7 +201,7 @@ const petDims = (k = petScale()) => (cfg.petRoom ? [ROOM_W, ROOM_H] : cfg.petFit
 function setPetRoom(on) {
   cfg.petRoom = !!on; saveCfg(); if (!pet || pet.isDestroyed()) return cfg.petRoom;
   const b = pet.getBounds(); const [w, h] = petDims(); const x = Math.round(b.x + b.width / 2 - w / 2), y = b.y + b.height - h;
-  pet.setBounds({ x, y, width: w, height: h }); cfg.pet = { x, y }; saveCfg(); return cfg.petRoom;
+  pet.setBounds({ x, y, width: w, height: h }); cfg.pet = { x, y }; saveCfg(); keepPetOnScreen(); return cfg.petRoom;
 }
 // 网页量好内容的大小（CSS 像素）：窗口刚好这么大，底边中间不动——没有透明的空白挡着后面的东西
 function fitPet(w, h) {
@@ -208,21 +211,22 @@ function fitPet(w, h) {
   const k = petScale(); const b = pet.getBounds(); const W = Math.round(w * k), H = Math.round(h * k);
   if (Math.abs(W - b.width) < 2 && Math.abs(H - b.height) < 2) return;
   const x = Math.round(b.x + b.width / 2 - W / 2), y = b.y + b.height - H;
-  pet.setBounds({ x, y, width: W, height: H }); cfg.pet = { x, y }; saveCfg();
+  pet.setBounds({ x, y, width: W, height: H }); cfg.pet = { x, y }; saveCfg(); keepPetOnScreen();
 }
 // 拖动：按下以后由这里跟着鼠标挪窗口（每秒 60 次），不用网页每动一下发一次消息
 let dragT = null;
 function petDragStart(ox, oy) {
   if (!pet || pet.isDestroyed()) return; clearInterval(dragT);
-  dragT = setInterval(() => { if (!pet || pet.isDestroyed()) { clearInterval(dragT); dragT = null; return; } const c = screen.getCursorScreenPoint(); const [x, y] = pet.getPosition(); const nx = Math.round(c.x - ox), ny = Math.round(c.y - oy); if (nx !== x || ny !== y) pet.setPosition(nx, ny); }, 16);
+  const t0 = Date.now(); // 万一松手的消息没到（网页卡住、崩了），30 秒后自己停，不会一直跟着鼠标
+  dragT = setInterval(() => { if (!pet || pet.isDestroyed() || Date.now() - t0 > 30e3) { petDragEnd(); return; } const c = screen.getCursorScreenPoint(); const [x, y] = pet.getPosition(); const nx = Math.round(c.x - ox), ny = Math.round(c.y - oy); if (nx !== x || ny !== y) pet.setPosition(nx, ny); }, 16);
 }
-function petDragEnd() { clearInterval(dragT); dragT = null; if (pet && !pet.isDestroyed()) { const [x, y] = pet.getPosition(); cfg.pet = { x, y }; saveCfg(); } }
+function petDragEnd() { clearInterval(dragT); dragT = null; if (pet && !pet.isDestroyed()) { const [x, y] = pet.getPosition(); cfg.pet = { x, y }; saveCfg(); keepPetOnScreen(); } }
 function setPetScale(k) {
   k = Math.max(.6, Math.min(1.8, Number(k) || 1)); cfg.petScale = k; saveCfg();
   if (!pet || pet.isDestroyed()) return k;
   const b = pet.getBounds(); const [w, h] = petDims(k);
   const x = Math.round(b.x + b.width / 2 - w / 2), y = b.y + b.height - h;
-  pet.setBounds({ x, y, width: w, height: h }); pet.webContents.setZoomFactor(k); cfg.pet = { x, y }; saveCfg();
+  pet.setBounds({ x, y, width: w, height: h }); pet.webContents.setZoomFactor(k); cfg.pet = { x, y }; saveCfg(); keepPetOnScreen();
   return k;
 }
 function showPet() { cfg.petOn = true; saveCfg(); if (!pet || pet.isDestroyed()) createPet(); else pet.showInactive(); refreshTray(); }
@@ -231,24 +235,45 @@ function hidePet() { if (pet && !pet.isDestroyed()) pet.hide(); cfg.petOn = fals
 // 数按键：只在这里加一，按的是哪个键不存、不传。按住不放（自动重复）只算一下
 const day = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
 let worker = null, keysErr = '';
-function keyStats() { const k = cfg.keys || {}; const today = k[day()] || 0; const total = Object.values(k).reduce((a, b) => a + b, 0); return { today, total, on: cfg.countKeys !== false, running: !!worker, needsPermission: MAC && !systemPreferences.isTrustedAccessibilityClient(false), error: keysErr }; }
+function keyStats() { const k = cfg.keys || {}; const today = k[day()] || 0; const total = Object.values(k).reduce((a, b) => a + b, 0); return { today, total, on: cfg.countKeys !== false, running: !!worker, needsPermission: MAC && !systemPreferences.isTrustedAccessibilityClient(false), error: keysErr, wayland: WAYLAND }; }
 function addKeys(n) {
   cfg.keys = cfg.keys || {}; const d = day(); cfg.keys[d] = (cfg.keys[d] || 0) + n;
   const ks = Object.keys(cfg.keys); if (ks.length > 400) cfg.keys = Object.fromEntries(ks.sort().slice(-400).map((k) => [k, cfg.keys[k]]));
   saveCfg();
   if (pet && !pet.isDestroyed()) pet.webContents.send('pet:key', { today: cfg.keys[d], n });
 }
-// 键盘钩子放在单独的后台进程里（keys-worker.js），只把「这一小段按了几下」发过来
+// 键盘钩子放在单独的后台进程里（keys-worker.js），只把「这一小段按了几下」发过来。
+// 意外退出会自己重启（1 分钟里最多 3 次，再多说明真有问题，就停下来、在菜单里说明）；睡醒 / 解锁后也重启一次，
+// 因为有的系统睡眠后键盘钩子就收不到东西了（BongoCat 也遇到过）。
+const WAYLAND = process.platform === 'linux' && (process.env.XDG_SESSION_TYPE === 'wayland' || !!process.env.WAYLAND_DISPLAY);
+let restarts = [];
 function startKeys() {
   if (worker || cfg.countKeys === false) return;
+  if (WAYLAND) { keysErr = 'wayland'; return; } // Wayland 不允许程序读全局键盘
   if (MAC && !systemPreferences.isTrustedAccessibilityClient(false)) { keysErr = 'needs-permission'; return; } // macOS 要先在「辅助功能」里允许
   try {
-    worker = utilityProcess.fork(path.join(__dirname, 'keys-worker.js'), [], { serviceName: 'SealoNote key counter' });
-    worker.on('message', (m) => { if (m && m.n) addKeys(m.n); else if (m && m.error) { keysErr = m.error; stopKeys(); } else if (m && m.ok) keysErr = ''; });
-    worker.on('exit', () => { worker = null; });
+    const w = utilityProcess.fork(path.join(__dirname, 'keys-worker.js'), [], { serviceName: 'SealoNote key counter' }); worker = w; w.stopping = false;
+    w.on('message', (m) => { if (m && m.n) addKeys(m.n); else if (m && m.error) { keysErr = m.error; stopKeys(); } else if (m && m.ok) keysErr = ''; });
+    w.on('exit', () => {
+      if (worker === w) worker = null;
+      if (w.stopping || cfg.countKeys === false || quitting) return;
+      const now = Date.now(); restarts = restarts.filter((t) => now - t < 60e3);
+      if (restarts.length >= 3) { keysErr = 'crashed'; return; }
+      restarts.push(now); setTimeout(startKeys, 1000);
+    });
   } catch (err) { worker = null; keysErr = String((err && err.message) || err); }
 }
-function stopKeys() { if (worker) { try { worker.postMessage('stop'); setTimeout(() => { try { worker && worker.kill(); } catch {} }, 500); } catch {} worker = null; } }
+function stopKeys() { const w = worker; worker = null; if (!w) return; w.stopping = true; try { w.postMessage('stop'); } catch {} setTimeout(() => { try { w.kill(); } catch {} }, 500); }
+function restartKeys() { if (cfg.countKeys === false) return; stopKeys(); setTimeout(startKeys, 800); }
+function resetKeys() { try { worker && worker.postMessage('reset'); } catch {} }
+
+// 汤圆别跑到屏幕外面去：拔了外接屏、改了分辨率、拖出去、变大以后，都拉回最近的屏幕里
+function keepPetOnScreen() {
+  if (!pet || pet.isDestroyed()) return;
+  const b = pet.getBounds(); const wa = screen.getDisplayMatching(b).workArea;
+  const x = Math.min(Math.max(b.x, wa.x), wa.x + wa.width - b.width), y = Math.min(Math.max(b.y, wa.y), wa.y + wa.height - b.height);
+  if (x !== b.x || y !== b.y) { pet.setPosition(x, y); cfg.pet = { x, y }; saveCfg(); }
+}
 
 function setPin(win, on) { if (win && !win.isDestroyed()) win.setAlwaysOnTop(!!on, 'floating'); }
 
@@ -337,9 +362,16 @@ else {
     if (stickyOnly || cfg.stickyOpen !== false) createSticky();
     if (stickyOnly && cfg.stickyOpen === false) showSticky();
     if (cfg.petOn !== false) createPet(); // 桌面汤圆默认开着，托盘里可以关
+    // 锁屏 / 睡眠：按着的键的状态清掉（keyup 会丢）；睡醒 / 解锁：键盘计数重启一下
+    powerMonitor.on('suspend', resetKeys); powerMonitor.on('lock-screen', resetKeys);
+    powerMonitor.on('resume', restartKeys); powerMonitor.on('unlock-screen', restartKeys);
+    // 屏幕变了（拔外接屏、改分辨率 / 缩放）：汤圆拉回屏幕里
+    ['display-removed', 'display-added', 'display-metrics-changed'].forEach((ev) => screen.on(ev, () => setTimeout(keepPetOnScreen, 300)));
+    // macOS：「辅助功能」权限中途被关掉 / 打开，每 30 秒看一次，跟着停 / 开
+    if (MAC) setInterval(() => { const ok = systemPreferences.isTrustedAccessibilityClient(false); if (!ok && worker) { stopKeys(); keysErr = 'needs-permission'; } else if (ok && !worker && cfg.countKeys !== false && keysErr === 'needs-permission') { keysErr = ''; startKeys(); } }, 30e3);
     Object.entries(cfg.notes).forEach(([id, n]) => { if (n && n.open) showNote(id); });
   });
   app.on('activate', () => showMain());
-  app.on('before-quit', () => { quitting = true; stopKeys(); });
+  app.on('before-quit', () => { quitting = true; stopKeys(); clearTimeout(saveT); writeCfgNow(); });
   app.on('window-all-closed', () => { if (!MAC) app.quit(); });
 }

@@ -147,7 +147,7 @@ export function snapFrames(look) {
   return snapQ;
 }
 
-function usePomo() { const [st, set] = useState(pomo.get()); useEffect(() => pomo.subscribe((x) => set({ ...x })), []); const [, tick] = useState(0); useEffect(() => { const t = setInterval(() => tick((x) => x + 1), 1000); return () => clearInterval(t); }, []); return st; }
+function usePomo() { const [st, set] = useState(pomo.get()); useEffect(() => pomo.subscribe((x) => set({ ...x })), []); const [, tick] = useState(0); const live = st.phase && st.phase !== 'idle' && !st.paused; useEffect(() => { if (!live) return; const t = setInterval(() => tick((x) => x + 1), 1000); return () => clearInterval(t); }, [live]); return st; } // 没在计时就不每秒刷新（空闲时 CPU 接近 0）
 
 export default function Pet({ preview = false, bare = false }) {
   const s = useStore(); const look = petLook(s);
@@ -269,7 +269,7 @@ export default function Pet({ preview = false, bare = false }) {
       ${row(locked ? '取消固定' : '固定在这里', () => { const v = !locked; setLockedS(v); lsSet('ytos.pet.locked', v); say(v ? '我就待在这儿' : '可以拖着我走啦'); })}
       ${canRoom && row(roomOn ? '离开房间' : '汤圆的房间', toggleRoom)}
       ${pomoOn && row('结束这一轮', () => pomo.stop())}
-      ${desk && row(keys.on === false || keys.needsPermission ? '开启打字计数' : '关闭打字计数', async () => { const r = await desk.setCount(keys.on === false || keys.needsPermission); setKeys(r); if (r.needsPermission) say('在系统设置 → 隐私 → 辅助功能里允许 Sealonote', 5000); }, '只数次数')}
+      ${desk && row(keys.on === false || keys.needsPermission ? '开启打字计数' : '关闭打字计数', async () => { const r = await desk.setCount(keys.on === false || keys.needsPermission); setKeys(r); if (r.needsPermission) say('在系统设置 → 隐私 → 辅助功能里允许 Sealonote', 5000); else if (r.wayland || r.error === 'wayland') say('Wayland 桌面不允许读键盘，打字计数用不了（X11 可以）', 5000); else if (r.error === 'crashed') say('打字计数连续出错停下了，重启 Sealonote 再试', 5000); }, '只数次数')}
       ${row('打开 SealoNote', () => openMain(''), '双击汤圆')}
       ${desk && row('先收起来', () => desk.hide(), '托盘里能再打开')}
     </div>`}
