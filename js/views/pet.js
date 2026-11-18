@@ -241,6 +241,16 @@ export default function Pet({ preview = false, bare = false }) {
   const openMain = (h) => (window.sealonote && window.sealonote.openMain ? window.sealonote.openMain(h) : (location.hash = h || '#/'));
 
   // ---- 画面
+  // 一轮结束：跳一下、说一句（提示音番茄钟自己会响）。用完成次数变了来判断，手动「结束这一轮」不算
+  const prevPomo = useRef({ phase: st.phase, count: st.count });
+  useEffect(() => {
+    const p = prevPomo.current; prevPomo.current = { phase: st.phase, count: st.count };
+    if (preview) return;
+    if (st.count > p.count) { setHop((h) => h + 1); say(st.phase === 'break' ? `完成一轮啦！休息 ${st.breakLen} 分钟` : '完成一轮啦！', 6000); }
+    else if (p.phase === 'break' && st.phase === 'idle') { setHop((h) => h + 1); say('休息好了，再来一轮？', 6000); }
+  }, [st.phase, st.count]);
+  // 第一次见面：告诉你可以怎么玩（只说一次）
+  useEffect(() => { if (preview || bare || !frames || (() => { try { return JSON.parse(localStorage.getItem('ytos.pet.intro')); } catch { return false; } })()) return; lsSet('ytos.pet.intro', true); const t = setTimeout(() => say('点我看下一件事，拖我换地方\n往上一甩就打开便签', 8000), 600); return () => clearTimeout(t); }, [!!frames]);
   const pomoOn = st.phase !== 'idle'; const remain = pomoOn ? pomo.remaining() : 0; const total = (st.phase === 'break' ? st.breakLen : st.workLen) * 60; const frac = total ? Math.min(1, Math.max(0, 1 - remain / total)) : 0; const C = 2 * Math.PI * 9;
   const doll = html`<div class="pet-doll-w" style=${`transform:rotate(${tilt}deg)`}><div key=${hop} class=${'pet-doll' + (hop ? ' hop' : '')} style=${frames && frames.w ? `width:${frames.w}px;height:${frames.h}px;aspect-ratio:${frames.w}/${frames.h}` : 'width:150px;height:110px;aspect-ratio:150/110'}>
     ${frames ? ['idle', 'blink', 'left', 'right'].map((k) => html`<img key=${k} src=${frames[k]} class=${pose === k ? 'on' : ''} alt="" draggable="false" />`) : html`<img src=${FALLBACK} class="on" alt="" draggable="false" />`}
@@ -248,28 +258,30 @@ export default function Pet({ preview = false, bare = false }) {
   if (bare) return doll;
   if (preview) return html`<div class="pet preview"><div class="pet-bubble">${msg || '在下面给我换装吧'}</div><div class="pet-stage">${doll}</div></div>`;
 
-  const btn = (icon, title, fn, on) => html`<button type="button" class=${'pb' + (on ? ' on' : '')} title=${title} aria-label=${title} onClick=${(e) => { e.stopPropagation(); fn(); }}><${Icon} name=${icon} size=${15} /></button>`;
+  const btn = (icon, title, fn, on, short) => html`<button type="button" class=${'pb' + (on ? ' on' : '')} data-l=${short || title} aria-label=${title} onClick=${(e) => { e.stopPropagation(); fn(); }}><${Icon} name=${icon} size=${15} /></button>`;
   const bar = html`<div class="pet-bar">
-    ${btn('note', '打开便签', openSticky)}
-    ${pomoOn ? btn(st.paused ? 'play' : 'pause', st.paused ? '继续番茄钟' : '暂停番茄钟', () => (st.paused ? pomo.resume() : pomo.pause())) : btn('clock', '专注 25 分钟', () => { pomo.start({ label: '专注' }); say('开始啦，我陪你'); })}
-    ${btn('chat', '和汤圆聊聊', () => (window.sealonote && window.sealonote.showAI ? window.sealonote.showAI() : (location.hash = '#/seal')))}
-    ${btn('dots', '更多', () => setPanel((x) => !x), panel)}
+    ${btn('note', '打开便签', openSticky, false, '便签')}
+    ${pomoOn ? btn(st.paused ? 'play' : 'pause', st.paused ? '继续番茄钟' : '暂停番茄钟', () => (st.paused ? pomo.resume() : pomo.pause()), false, st.paused ? '继续' : '暂停') : btn('clock', '专注 25 分钟', () => { pomo.start({ label: '专注' }); say('开始啦，我陪你'); }, false, '专注')}
+    ${btn('chat', '和汤圆聊聊', () => (window.sealonote && window.sealonote.showAI ? window.sealonote.showAI() : (location.hash = '#/seal')), false, '聊天')}
+    ${btn('dots', '更多', () => setPanel((x) => !x), panel, '更多')}
   </div>`;
   const timer = pomoOn && html`<button type="button" class=${'pet-chip pet-timer ' + st.phase + (st.paused ? ' paused' : '')} title=${st.paused ? '点一下继续' : '点一下暂停'} onClick=${(e) => { e.stopPropagation(); st.paused ? pomo.resume() : pomo.pause(); }}>
-    <svg viewBox="0 0 22 22" width="18" height="18" aria-hidden="true"><circle cx="11" cy="11" r="9" class="tr" /><circle cx="11" cy="11" r="9" class="fg" style=${`stroke-dasharray:${C};stroke-dashoffset:${C * (1 - frac)}`} /></svg>
-    <b>${pomo.fmt(remain)}</b>${st.phase === 'break' ? html`<small>休息</small>` : st.paused ? html`<small>暂停</small>` : null}</button>`;
+    <svg viewBox="0 0 22 22" width="19" height="19" aria-hidden="true"><circle cx="11" cy="11" r="9" class="tr" /><circle cx="11" cy="11" r="9" class="fg" style=${`stroke-dasharray:${C};stroke-dashoffset:${C * (1 - frac)}`} /></svg>
+    <b>${pomo.fmt(remain)}</b><small>${st.paused ? '暂停' : st.phase === 'break' ? '休息' : '专注'}</small></button>`;
   // 头顶这一格：鼠标在汤圆身上时是一排按钮，不然是计时 / 说的话
   // 刚说了话就先显示那句话（点了汤圆要看到它回答），说完了鼠标还在上面才换成按钮
   const top = msg ? html`<div class="pet-bubble">${msg}</div>` : hover && !panel ? bar : timer || html`<div class="pet-slot"></div>`;
   const row = (label, fn, hint) => html`<button type="button" class="pp-row" onClick=${() => { setPanel(false); fn(); }}><span>${label}</span>${hint && html`<small>${hint}</small>`}</button>`;
   return html`<div ref=${box} class=${'pet ' + (roomOn ? 'room-mode ' : '') + (fits ? 'fit ' : '')} onPointerDown=${down} onPointerMove=${move} onPointerUp=${up} onWheel=${wheel} onContextMenu=${(e) => { e.preventDefault(); setPanel(true); }} onDblClick=${() => openMain('')}>
     ${panel && html`<div class="pet-panel" onPointerDown=${(e) => e.stopPropagation()}>
+      ${pomoOn && html`${pomoOn && row('结束这一轮', () => pomo.stop())}<div class="pp-sep"></div>`}
       ${row('换装…', () => openMain('#/settings?sec=seal'))}
       ${canSize && html`<div class="pp-size"><span>大小</span><div>${[[.7, '小'], [1, '中'], [1.3, '大'], [1.6, '特大']].map(([k, l]) => html`<button type="button" class=${Math.abs(size - k) < .05 ? 'on' : ''} onClick=${() => setSize(k)}>${l}</button>`)}</div></div>`}
-      ${row(locked ? '取消固定' : '固定在这里', () => { const v = !locked; setLockedS(v); lsSet('ytos.pet.locked', v); say(v ? '我就待在这儿' : '可以拖着我走啦'); })}
       ${canRoom && row(roomOn ? '离开房间' : '汤圆的房间', toggleRoom)}
-      ${pomoOn && row('结束这一轮', () => pomo.stop())}
+      <div class="pp-sep"></div>
+      ${row(locked ? '取消固定' : '固定在这里', () => { const v = !locked; setLockedS(v); lsSet('ytos.pet.locked', v); say(v ? '我就待在这儿' : '可以拖着我走啦'); })}
       ${desk && row(keys.on === false || keys.needsPermission ? '开启打字计数' : '关闭打字计数', async () => { const r = await desk.setCount(keys.on === false || keys.needsPermission); setKeys(r); if (r.needsPermission) say('在系统设置 → 隐私 → 辅助功能里允许 Sealonote', 5000); else if (r.wayland || r.error === 'wayland') say('Wayland 桌面不允许读键盘，打字计数用不了（X11 可以）', 5000); else if (r.error === 'crashed') say('打字计数连续出错停下了，重启 Sealonote 再试', 5000); }, '只数次数')}
+      <div class="pp-sep"></div>
       ${row('打开 SealoNote', () => openMain(''), '双击汤圆')}
       ${desk && row('先收起来', () => desk.hide(), '托盘里能再打开')}
     </div>`}

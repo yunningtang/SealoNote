@@ -5203,3 +5203,18 @@ img.pet-doll{width:auto;height:auto;max-width:200px}
 @media(max-width:900px){.td{grid-template-columns:1fr;height:auto}.td-list{border-right:0;border-bottom:1px solid var(--line);padding-bottom:12px}.td-scroll{max-height:none}.td-body{max-height:70vh}}
 .td-cal-h>b,.td-cal .seg button{white-space:nowrap}
 @media(max-width:700px){.td-cal-h{flex-wrap:wrap;gap:6px}.td-day{flex-direction:column;gap:2px;padding:7px 2px}.td-day i{display:none}.td-days,.td-grid{grid-template-columns:44px repeat(var(--cols),minmax(0,1fr))}}
+/* 汤圆 v4：计时一眼看出专注 / 休息；打字数有底；按钮下面直接写名字；面板分组 */
+.pet-timer{padding-right:12px}
+.pet-timer .tr{stroke:#e4e2dc;stroke-width:3.2}.pet-timer .fg{stroke-width:3.2}
+.pet-timer.work{background:#fff7f1;box-shadow:0 0 0 1px rgba(224,137,79,.22),0 6px 16px -8px rgba(0,0,0,.28)}
+.pet-timer.break{background:#f2faf5;box-shadow:0 0 0 1px rgba(74,154,106,.25),0 6px 16px -8px rgba(0,0,0,.28)}
+.pet-timer.work small{color:#c06a33}.pet-timer.break small{color:#3d8a5c}.pet-timer.paused small{color:var(--pet-mute)}
+.pet-count{padding:0 9px;border-radius:999px;background:rgba(255,255,255,.88);box-shadow:0 0 0 1px var(--pet-line);color:#6b6a65;width:max-content;margin:0 auto;font-size:11.5px}
+.pet-count:empty{display:none}
+.pet-bar .pb{position:relative}
+.pet-bar .pb::after{content:attr(data-l);position:absolute;top:calc(100% + 7px);left:50%;transform:translateX(-50%);padding:2px 7px;border-radius:6px;background:rgba(31,30,28,.86);color:#fff;font-size:10.5px;line-height:1.5;white-space:nowrap;pointer-events:none;opacity:0;transition:opacity .1s;z-index:5}
+.pet-bar .pb:hover::after{opacity:1}
+.pp-sep{height:1px;background:var(--pet-line);margin:4px 6px}
+.pet-bubble{white-space:pre-line;text-align:center;max-width:190px}
+.pet-panel .pp-size{border-bottom:0;margin-bottom:0}
+.pet-count.on{opacity:1}
