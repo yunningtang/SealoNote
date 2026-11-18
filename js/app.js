@@ -46,10 +46,10 @@ import { dueCount } from './review.js';
 const todayLeft = (s) => { const d = new Date(); const t = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; return s.todos.filter((x) => !x.done && x.due && x.due <= t && (x.dueEnd || x.due) >= t).length; };
 export const ROUTES = [
   { path: 'home', name: '总览', icon: 'home', view: Dashboard },
-  { path: 'today', name: '今天', icon: 'sun', view: TodayView, count: todayLeft },
   { sep: '每一天' },
   { path: 'todos', name: '待办', icon: 'checksq', view: Todos, count: (s) => s.todos.filter((t) => !t.done).length },
   { path: 'brain', name: '大脑', icon: 'brain', view: Brain, count: unsortedCount, show: (s) => s.settings.brainNav !== false },
+  { path: 'today', name: '今天', icon: 'sun', view: TodayView, count: todayLeft },
   { path: 'plan', name: '计划', icon: 'calendar', view: Planner },
   { path: 'focus', name: '专注', icon: 'clock', view: Focus },
   { path: 'stickies', name: '便签', icon: 'tack', view: StickiesPage, show: (s) => s.settings.stickyNav !== false },
