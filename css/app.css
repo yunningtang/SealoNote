@@ -5145,3 +5145,6 @@ img.pet-doll{width:auto;height:auto;max-width:200px}
 .pet.preview .pet-bubble{margin-bottom:6px}
 @media (prefers-reduced-motion:reduce){.pet-doll,.pet-doll.hop{animation:none}}
 .room-seal .pet-doll,.pet-dress-prev .pet-doll{max-width:100%}.room-seal .pet-doll{width:100%!important;height:auto!important}
+/* 房间模式：窗口固定 380 宽，房间要撑满，不能跟着「窗口包住内容」缩小 */
+.pet.fit.room-mode{width:380px;min-width:380px}
+.pet.room-mode .room{width:360px;max-width:100%}
