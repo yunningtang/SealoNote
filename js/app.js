@@ -31,7 +31,7 @@ import { initLiquid } from './liquid.js';
 import { ctxMenu } from './ctx.js';
 import { askPrompt } from './confirm.js';
 import { Splitter, applySizes } from './resize.js';
-import { detectLogin, autoSync } from './sync.js';
+import { detectLogin, autoSync, loginState, loggedIn, smartSync, guarded, status as syncStatus } from './sync.js';
 import { injectFontCss } from './fonts.js';
 import { initGameFx } from './gamefx.js';
 injectFontCss();
@@ -108,6 +108,28 @@ function MoreSheet({ s, onClose, openNav }) {
       </div>
     </section>
   </div>`;
+}
+
+// 这台设备没在同步时提醒一句：没登录，或者登录了但超过一天没同步上。
+// 不然 Claude（MCP）和别的设备写进来的东西在这台上看不到，看起来像「丢了」。关掉后 3 天内不再提醒。
+function SyncNudge({ s }) {
+  const [, tick] = useState(0);
+  useEffect(() => { const f = () => tick((x) => x + 1); window.addEventListener('ytos:login', f); syncStatus.listeners.add(f); const t = setTimeout(f, 8000); return () => { window.removeEventListener('ytos:login', f); syncStatus.listeners.delete(f); clearTimeout(t); }; }, []);
+  const KEY = 'ytos.syncnudge.off'; let off = 0; try { off = Number(localStorage.getItem(KEY) || 0); } catch {}
+  if (Date.now() < off) return null;
+  const api = loginState(); if (!api || !api.configured) return null; // 本地版 / 没有云端的地方不提醒
+  const close = () => { try { localStorage.setItem(KEY, String(Date.now() + 3 * 864e5)); } catch {} tick((x) => x + 1); };
+  let msg = '', act = null;
+  if (!loggedIn()) { msg = '这台设备没有登录同步：Claude 和其他设备写进来的内容在这里看不到。'; act = html`<a class="sn-btn" href="#/settings?sec=account">去登录</a>`; }
+  else {
+    const last = s.settings.lastSync ? Date.parse(s.settings.lastSync) : 0; const age = Date.now() - last;
+    if (syncStatus.busy || age < 864e5) return null;
+    if (!last && performance.now() < 15000) return null; // 刚打开，第一次同步还在路上
+    const days = Math.max(1, Math.floor(age / 864e5));
+    msg = last ? `这台设备 ${days} 天没同步了${syncStatus.error ? '（' + syncStatus.error.slice(0, 40) + '）' : ''}，可能缺了别处写进来的内容。` : '这台设备还没同步过。';
+    act = html`<button type="button" class="sn-btn" onClick=${() => guarded(() => smartSync()).catch(() => {})}>立即同步</button>`;
+  }
+  return html`<div class="sync-nudge" role="status"><${Icon} name="cloud" size=${15} /><span class="flex1">${msg}</span>${act}<button type="button" class="sn-x" aria-label="关闭提醒" title="3 天内不再提醒" onClick=${close}><${Icon} name="x" size=${13} /></button></div>`;
 }
 
 export function useRoute() {
@@ -231,6 +253,7 @@ function App() {
         <button class="theme-glass" onClick=${toggleTheme} title="切换主题"><${Icon} name="moon" class="is" size=${15} /><${Icon} name="sun" class="im" size=${15} /></button>
         <${WinControls} />
       </header>
+      <${SyncNudge} s=${s} />
       <main key=${route.path} class="fi"><${View} route=${route} /></main>
     </div>
     <${SearchPalette} open=${search} onClose=${() => setSearch(false)} />
