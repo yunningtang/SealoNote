@@ -3,11 +3,11 @@
 import { html, useState, useMemo, useEffect, useRef } from '../../vendor/preact.js';
 import { useStore, upsert, remove, get } from '../store.js';
 import { Icon, IconBtn, Btn, Seg, Collapse, Empty } from '../ui.js';
-import { todayStr, addDays, parseDate, WEEKDAY, sortBy, lsGet, lsSet, timeToMin, pad, PRIORITY, allKinds } from '../util.js';
+import { todayStr, addDays, parseDate, WEEKDAY, sortBy, lsGet, lsSet, timeToMin, pad, PRIORITY, allKinds, kindColor } from '../util.js';
 import { onDay, isDropped } from '../remind.js';
 import { TodoItem, TodoModal, QuickAdd, moveOverdueToday } from './todos.js';
 import { Timeline, BlockModal } from './planner.js';
-import { dragProps } from '../dnd.js';
+import { dragProps, dropProps } from '../dnd.js';
 import { scheduleTodo } from '../schedule.js';
 
 const HOUR_H = 52;
@@ -32,12 +32,34 @@ function Row({ t, onEdit, time, onUnplan, day }) {
   </div>`;
 }
 
+const shiftMonth = (d, k) => { const x = parseDate(d); const t = new Date(x.getFullYear(), x.getMonth() + k, 1); return `${t.getFullYear()}-${pad(t.getMonth() + 1)}-01`; };
+// 一整个月：每天一格，格子里是那天的时间块（带时间）和还没做完的待办；点一格 = 左边看那天，双击 = 打开那天的时间线；
+// 把左边的待办拖到某一格 = 改到那天
+function MonthGrid({ s, from, day, today, onPick, onOpenDay, onBlock, onTodo }) {
+  const first = from.slice(0, 7) + '-01'; const fd = parseDate(first);
+  const start = addDays(first, -((fd.getDay() + 6) % 7));
+  const last = new Date(fd.getFullYear(), fd.getMonth() + 1, 0).getDate();
+  const weeks = Math.ceil(((fd.getDay() + 6) % 7 + last) / 7);
+  const cells = Array.from({ length: weeks * 7 }, (_, i) => addDays(start, i));
+  const MAX = 3;
+  const items = useMemo(() => { const m = {}; for (const d of cells) m[d] = []; for (const b of s.blocks) { if (b.pomo || !m[b.date]) continue; m[b.date].push({ k: 'b', b, t: b.start || '' }); } for (const t of s.todos) { if (t.done || !t.due) continue; for (const d of cells) if (onDay(t, d) && !m[d].some((x) => x.k === 'b' && x.b.todoId === t.id)) m[d].push({ k: 't', t, tm: t.time || '99:99' }); } for (const d of cells) m[d].sort((a, b) => (a.k === 'b' ? a.t : a.tm) < (b.k === 'b' ? b.t : b.tm) ? -1 : 1); return m; }, [s.blocks, s.todos, from]);
+  return html`<div class="tdm-month">
+    <div class="tdmo-w">${['一', '二', '三', '四', '五', '六', '日'].map((w) => html`<span key=${w}>${w}</span>`)}</div>
+    <div class="tdmo-grid" style=${`--weeks:${weeks}`}>${cells.map((d) => { const list = items[d] || []; const out = d.slice(0, 7) !== first.slice(0, 7); return html`<div key=${d} class=${'tdmo-c' + (out ? ' out' : '') + (d === today ? ' today' : '') + (d === day ? ' sel' : '')} onClick=${() => onPick(d)} onDblClick=${() => onOpenDay(d)} title="点一下：左边看这天；双击：打开这天的时间线" ...${dropProps(['todo'], (x) => { const t = get().todos.find((y) => y.id === x.id); if (t) upsert('todos', { id: t.id, due: d, ...(t.dueEnd ? { dueEnd: '' } : {}) }); onPick(d); })}>
+        <b class="tdmo-n">${Number(d.slice(8)) === 1 ? `${Number(d.slice(5, 7))}月1日` : Number(d.slice(8))}</b>
+        ${list.slice(0, MAX).map((x) => x.k === 'b' ? html`<button type="button" key=${x.b.id} class="tdmo-i" onClick=${(e) => { e.stopPropagation(); onBlock(x.b); }}><i style=${`background:${kindColor(x.b.kind || 'focus')}`}></i><em>${x.b.start}</em><span>${x.b.title || '时间块'}</span></button>`
+          : html`<button type="button" key=${x.t.id} class="tdmo-i todo" onClick=${(e) => { e.stopPropagation(); onTodo(x.t); }}><i class="tdmo-ck"></i>${x.t.time && html`<em>${x.t.time}</em>`}<span>${x.t.title}</span></button>`)}
+        ${list.length > MAX && html`<button type="button" class="tdmo-more" onClick=${(e) => { e.stopPropagation(); onOpenDay(d); }}>还有 ${list.length - MAX} 项</button>`}
+      </div>`; })}</div>
+  </div>`;
+}
+
 export default function TodayView({ route } = {}) {
   const s = useStore();
   const today = todayStr();
   const q = route && route.query && /^\d{4}-\d\d-\d\d$/.test(route.query.d || '') ? route.query.d : '';
   const [day, setDay] = useState(q || today); // 左边列表看的是哪天
-  const [nPick, setN] = useState(() => Number(lsGet('td.days', '3')) || 3); // 右边显示几天
+  const [nPick, setN] = useState(() => { const v = lsGet('td.days', '3'); return v === 'month' ? 'month' : Number(v) || 3; }); // 右边显示几天，或者 'month' 一整个月
   const [from, setFrom] = useState(q || today); // 右边从哪天开始
   const [open, setOpen] = useState(() => { try { return { late: true, todo: true, cal: true, done: false, inbox: false, ...JSON.parse(lsGet('td.open', '{}')) }; } catch { return { late: true, todo: true, cal: true, done: false, inbox: false }; } });
   const tog = (k) => { const v = { ...open, [k]: !open[k] }; setOpen(v); lsSet('td.open', JSON.stringify(v)); };
@@ -77,7 +99,8 @@ export default function TodayView({ route } = {}) {
   // 手机上最多 3 天，再多每列就挤得看不清了
   const [narrow, setNarrow] = useState(() => typeof matchMedia === 'function' && matchMedia('(max-width: 700px)').matches);
   useEffect(() => { if (typeof matchMedia !== 'function') return; const m = matchMedia('(max-width: 700px)'); const h = () => setNarrow(m.matches); m.addEventListener('change', h); return () => m.removeEventListener('change', h); }, []);
-  const n = narrow ? 1 : nPick; // 手机：照设计稿只看一天，上面用一周的日期条换天
+  const isMonth = !narrow && nPick === 'month';
+  const n = narrow ? 1 : isMonth ? 1 : nPick; // 手机：照设计稿只看一天，上面用一周的日期条换天
   const days = Array.from({ length: n }, (_, i) => addDays(narrow ? day : from, i));
   const byDay = useMemo(() => { const m = {}; for (const d of days) m[d] = sortBy(s.blocks.filter((b) => b.date === d && !b.pomo), 'start'); return m; }, [s.blocks, from, n, day, narrow]);
   const counts = useMemo(() => { const m = {}; for (const d of [...days, ...(narrow ? Array.from({ length: 7 }, (_, i) => addDays(addDays(day, -((parseDate(day).getDay() + 6) % 7)), i)) : [])]) m[d] = s.todos.filter((t) => !t.done && onDay(t, d)).length; return m; }, [s.todos, from, n]);
@@ -85,7 +108,7 @@ export default function TodayView({ route } = {}) {
   const loose = useMemo(() => { const m = {}; for (const d of days) { const on = new Set(s.blocks.filter((b) => b.date === d && b.todoId).map((b) => b.todoId)); m[d] = sortBy(s.todos.filter((t) => !t.done && onDay(t, d) && !on.has(t.id)), 'priority', 'time'); } return m; }, [s.todos, s.blocks, from, n, day, narrow]);
   const scRef = useRef();
   useEffect(() => { const el = scRef.current; if (!el) return; const now = new Date(); el.scrollTop = Math.max(0, ((now.getHours() * 60 + now.getMinutes()) / 60) * HOUR_H - el.clientHeight * 0.3); }, []);
-  const setDays = (v) => { setN(v); lsSet('td.days', String(v)); };
+  const setDays = (v) => { setN(v); lsSet('td.days', String(v)); if (v === 'month') setFrom(day); };
   const ym = parseDate(from);
 
   return html`<div class="td" style=${`--cols:${n}`}>
@@ -135,12 +158,13 @@ export default function TodayView({ route } = {}) {
       <div class="td-cal-h">
         <b>${ym.getFullYear()}年${ym.getMonth() + 1}月</b>
         <div class="td-nav">
-          <${IconBtn} icon="left" size=${14} title=${`往前 ${n} 天`} onClick=${() => setFrom(addDays(from, -n))} />
-          <${Btn} small kind="ghost" disabled=${from === today} onClick=${() => { setFrom(today); setDay(today); }}>今天<//>
-          <${IconBtn} icon="right" size=${14} title=${`往后 ${n} 天`} onClick=${() => setFrom(addDays(from, n))} />
+          <${IconBtn} icon="left" size=${14} title=${isMonth ? '上个月' : `往前 ${n} 天`} onClick=${() => setFrom(isMonth ? shiftMonth(from, -1) : addDays(from, -n))} />
+          <${Btn} small kind="ghost" disabled=${isMonth ? from.slice(0, 7) === today.slice(0, 7) : from === today} onClick=${() => { setFrom(today); setDay(today); }}>今天<//>
+          <${IconBtn} icon="right" size=${14} title=${isMonth ? '下个月' : `往后 ${n} 天`} onClick=${() => setFrom(isMonth ? shiftMonth(from, 1) : addDays(from, n))} />
         </div>
-        <${Seg} value=${n} onChange=${setDays} options=${[{ v: 1, label: '1 天' }, { v: 3, label: '3 天' }, ...(narrow ? [] : [{ v: 5, label: '5 天' }, { v: 7, label: '7 天' }])]} />
+        <${Seg} value=${isMonth ? 'month' : n} onChange=${setDays} options=${[{ v: 1, label: '1 天' }, { v: 3, label: '3 天' }, ...(narrow ? [] : [{ v: 5, label: '5 天' }, { v: 7, label: '7 天' }, { v: 'month', label: '月' }])]} />
       </div>
+      ${isMonth ? html`<${MonthGrid} s=${s} from=${from} day=${day} today=${today} onPick=${setDay} onOpenDay=${(d) => { setDays(1); setFrom(d); setDay(d); }} onBlock=${(b) => setBlk({ block: b })} onTodo=${setTEdit} />` : html`<div class="td-cols">
       <div class="td-days">
         <span class="td-gut"></span>
         ${days.map((d) => html`<button type="button" key=${d} class=${'td-day' + (d === today ? ' today' : '') + (d === day ? ' sel' : '')} title="在左边看这天的待办" onClick=${() => setDay(d)}>
@@ -159,6 +183,7 @@ export default function TodayView({ route } = {}) {
           </div>`)}
         </div>
       </div>
+      </div>`}
     </section>
     ${narrow && html`<section class="tdm-alloc" aria-label="时间分配">
       <b>时间分配</b>

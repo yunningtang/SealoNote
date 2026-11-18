@@ -403,6 +403,22 @@ else {
     ipcMain.handle('pet:stats', () => keyStats());
     ipcMain.handle('pet:setScale', (_e, k) => setPetScale(k));
     ipcMain.handle('pet:setRoom', (_e, on) => setPetRoom(on));
+    // 「更多」/ 右键：用系统自己的菜单（像 BongoCat 这类桌宠），汤圆的小窗口不用变大，也不会挡住汤圆
+    ipcMain.handle('pet:menu', (_e, st = {}) => new Promise((resolve) => {
+      if (!pet || pet.isDestroyed()) return resolve('');
+      let picked = '';
+      const pick = (id) => () => { picked = id; };
+      const sizes = [[0.7, '小'], [1, '中'], [1.3, '大'], [1.6, '特大']];
+      const menu = Menu.buildFromTemplate([
+        { label: '换装…', click: pick('dress') },
+        { label: '大小', submenu: sizes.map(([k, l]) => ({ label: l, type: 'radio', checked: Math.abs((Number(st.size) || 1) - k) < 0.05, click: pick('size:' + k) })) },
+        { label: '固定在这里', type: 'checkbox', checked: !!st.locked, click: pick('lock') },
+        { label: '打字计数', type: 'checkbox', checked: !!st.counting, click: pick('count') },
+        { type: 'separator' },
+        { label: '收起汤圆', click: pick('hide') },
+      ]);
+      menu.popup({ window: pet, callback: () => setTimeout(() => resolve(picked), 80) }); // 有的系统点击在菜单关掉之后才送到，稍等一下
+    }));
     ipcMain.on('pet:hit', () => {}); // 0.6.3 的网页还会调；现在不穿透了
     ipcMain.on('pet:fit', (_e, w, h) => fitPet(Number(w), Number(h)));
     ipcMain.on('pet:dragStart', (_e, ox, oy) => petDragStart(Number(ox) || 0, Number(oy) || 0));

@@ -5537,3 +5537,22 @@ html[data-theme="dark"] .lk-new{background:#4a3218;color:#f2b36f}
 .td-chip::before{content:"";flex:none;width:6px;height:6px;border-radius:50%;background:var(--pc,var(--text-4))}
 .sp-card{box-shadow:none!important}
 .fq-p{width:6px;height:6px;align-self:center;border-radius:50%}
+/* 「今天」右边的一整个月 */
+.td-cols{display:contents}
+.tdm-month{flex:1;min-height:0;display:flex;flex-direction:column;padding:0 10px 10px}
+.tdmo-w{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));padding:8px 0 6px}.tdmo-w span{font-size:.72rem;color:var(--text-4);padding-left:8px}
+.tdmo-grid{flex:1;min-height:0;display:grid;grid-template-columns:repeat(7,minmax(0,1fr));grid-template-rows:repeat(var(--weeks),minmax(96px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.tdmo-c{background:var(--paper);padding:6px 5px 4px;display:flex;flex-direction:column;gap:2px;min-width:0;min-height:0;overflow:hidden;cursor:pointer;transition:background .12s}
+.tdmo-c:hover{background:color-mix(in srgb,rgb(var(--ac)) 3%,var(--paper))}
+.tdmo-c.out{background:color-mix(in srgb,var(--hover) 60%,var(--paper))}.tdmo-c.out .tdmo-n{color:var(--text-4)}
+.tdmo-c.sel{box-shadow:inset 0 0 0 2px color-mix(in srgb,rgb(var(--ac)) 55%,transparent)}
+.tdmo-c.drop-over{background:color-mix(in srgb,rgb(var(--ac)) 9%,var(--paper))}
+.tdmo-n{align-self:flex-start;font-size:.78rem;font-weight:600;min-width:22px;height:22px;line-height:22px;padding:0 5px;border-radius:11px;text-align:center;color:var(--text-2);margin-bottom:2px;box-sizing:border-box}
+.tdmo-c.today .tdmo-n{background:rgb(var(--ac));color:#fff}
+.tdmo-i{display:flex;align-items:center;gap:5px;width:100%;border:0;background:none;padding:2px 4px;border-radius:6px;font:inherit;font-size:.72rem;color:var(--text);text-align:left;cursor:pointer;min-width:0}
+.tdmo-i:hover{background:var(--hover)}
+.tdmo-i i{flex:none;width:6px;height:6px;border-radius:50%}.tdmo-i i.tdmo-ck{width:8px;height:8px;border-radius:3px;border:1.3px solid var(--text-4);box-sizing:border-box;background:none}
+.tdmo-i em{flex:none;font-style:normal;color:var(--text-4);font-variant-numeric:tabular-nums;font-size:.68rem}
+.tdmo-i span{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tdmo-more{border:0;background:none;font:inherit;font-size:.68rem;color:var(--text-3);text-align:left;padding:1px 4px;cursor:pointer}.tdmo-more:hover{color:rgb(var(--ac))}
+.tdmo-c{gap:1px;padding-bottom:2px}.tdmo-n{margin-bottom:1px}.tdmo-i{padding:1px 4px;line-height:1.35}
