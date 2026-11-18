@@ -172,37 +172,48 @@ export default function Reading({ route }) {
   const hasPage = (b) => s.notes.some((n) => n.ref === 'book:' + b.id);
   const menu = (b) => [{ label: '打开', icon: 'book', onClick: () => setOpen(b.id) }, b.status !== 'done' && { label: '让汤圆排阅读计划', icon: 'sparkle', hint: '拆成几次阅读', onClick: () => window.dispatchEvent(new CustomEvent('seal:breakdown', { detail: { src: { kind: 'book', id: b.id } } })) }, !b.cover && { label: '自动找封面', icon: 'image', onClick: () => autoCover(b) }, { label: hasPage(b) ? '打开笔记页' : '新建笔记页', icon: 'note', onClick: () => notePage(b) }, { label: '编辑', icon: 'edit', onClick: () => { setEditing(b); setModal(true); } }, 'sep', ...STATUS.map(([v, n]) => ({ label: n, icon: v === b.status ? 'check' : 'tag', onClick: () => setStatusOf(b, v) })), 'sep', b.link && { label: '打开链接', icon: 'external', onClick: () => window.open(b.link, '_blank', 'noopener') }, { label: '删除', icon: 'trash', danger: true, onClick: () => removeUndo('books', b.id, b.title) }];
 
-  return html`<div>
-    <div class="page-h">
-      <div><div class="desc">${s.books.filter((b) => b.status === 'reading').length} 本在读 · 今年读完 ${doneThisYear} 本 · 共 ${s.books.length} 本</div></div>
-      <div class="acts">
-        <div class="seg" data-liquid="button"><span class="liq"></span>${[{ v: 'all', label: '全部' }, ...STATUS.map(([v, n]) => ({ v, label: n }))].map((o) => html`<button type="button" class=${o.v === status ? 'on' : ''} onClick=${() => setStatus(o.v)} ...${o.v === 'all' ? {} : dropProps('book', (d) => { const bk = s.books.find((x) => x.id === d.id); if (bk) setStatusOf(bk, o.v); })}>${o.label}</button>`)}</div>
-        <${Btn} kind="primary" icon="plus" onClick=${() => { setEditing(null); setModal(true); }}>加入书架<//>
+  // 这个月读了多少页（用每天记下的进度算）
+  const monthPages = useMemo(() => { const m = todayStr().slice(0, 7); let n = 0; for (const b of s.books) { if (!(b.total > 0)) continue; const log = b.log || []; const before = [...log].reverse().find((x) => x.d < m + '-01'); const last = [...log].reverse().find((x) => x.d.startsWith(m)); if (last) n += Math.max(0, last.p - (before ? before.p : 0)); } return n; }, [s.books]);
+  const reading = groups.find(([n]) => n === '在读');
+  const shelves = groups.filter(([n]) => n !== '在读');
+  const unit = (b) => (b.total > 0 ? '页' : '%');
+  const tile = (b) => html`<div class="bk-tile" key=${b.id} ...${dragProps('book', { id: b.id })} onContextMenu=${(e) => ctxMenu(e, menu(b), b.title)}>
+      <button type="button" class="bk-cv" style=${`--cc:${b.color || '#3b6fd6'}`} onClick=${() => setOpen(b.id)} title=${b.title}>${b.cover ? html`<img src=${b.cover} alt="" loading="lazy" />` : html`<span>${b.title.slice(0, 12)}</span>`}${b.status === 'reading' && html`<i class="bk-bar"><i style=${`width:${Math.min(100, pct(b))}%`}></i></i>`}</button>
+      <b onClick=${() => setOpen(b.id)}>${b.title}</b>
+      <small>${b.rating > 0 ? html`<${Stars} value=${b.rating} size=${10} />` : b.author || typeName(s, b.type)}</small>
+    </div>`;
+  const hero = (b) => { const pc = paceOf(b); return html`<div class="bk-hero" key=${b.id} ...${dragProps('book', { id: b.id })} onContextMenu=${(e) => ctxMenu(e, menu(b), b.title)}>
+      <button type="button" class="bk-cv big" style=${`--cc:${b.color || '#3b6fd6'}`} onClick=${() => setOpen(b.id)}>${b.cover ? html`<img src=${b.cover} alt="" loading="lazy" />` : html`<span>${b.title.slice(0, 12)}</span>`}</button>
+      <div class="bk-hero-b">
+        <b class="bk-hero-t" onClick=${() => setOpen(b.id)}>${b.title}</b>
+        <span class="bk-hero-a">${b.author || typeName(s, b.type)}${b.started ? ` · ${b.started.slice(5).replace('-', '/')} 开始` : ''}</span>
+        <div class="bk-hero-p" onClick=${(e) => e.stopPropagation()}><${ProgressCtl} b=${b} /></div>
+        <span class="bk-hero-pace">${pc && pc.read > 0 ? `最近每天约 ${pc.perDay.toFixed(pc.perDay < 10 ? 1 : 0)} ${unit(b)}${pc.eta ? ` · 预计 ${pc.eta.slice(5).replace('-', '/')} 读完` : ''}` : b.note ? `${b.note.slice(0, 40)}${b.note.length > 40 ? '…' : ''}` : '读一点就记一下进度，这里会算读速'}</span>
+        <div class="bk-hero-act">
+          ${(b.total > 0 ? [5, 10, 20] : [5, 10]).map((n) => html`<button type="button" class="bk-chip" onClick=${() => bump(b, n)}>+${n}${unit(b)}</button>`)}
+          <span class="flex1"></span>
+          ${pct(b) >= 100 ? html`<button type="button" class="btn sm primary" onClick=${() => setStatusOf(b, 'done')}>读完了</button>` : html`<button type="button" class="btn sm ghost" onClick=${() => setStatusOf(b, 'done')}>读完</button>`}
+          <${IconBtn} icon="note" title=${hasPage(b) ? '打开笔记页' : '新建笔记页'} class=${'ibtn ' + (hasPage(b) ? 'on' : '')} size=${14} onClick=${() => notePage(b)} />
+        </div>
       </div>
+    </div>`; };
+
+  return html`<div class="rd2">
+    <div class="rd2-h">
+      <div><h1>阅读</h1><p>${s.books.filter((b) => b.status === 'reading').length} 本在读 · 今年读完 ${doneThisYear} 本${monthPages ? ` · 本月读了 ${monthPages} 页` : ''}</p></div>
+      <span class="flex1"></span>
+      <div class="seg" data-liquid="button"><span class="liq"></span>${[{ v: 'all', label: '全部' }, ...STATUS.map(([v, n]) => ({ v, label: n }))].map((o) => html`<button type="button" class=${o.v === status ? 'on' : ''} onClick=${() => setStatus(o.v)} ...${o.v === 'all' ? {} : dropProps('book', (d) => { const bk = s.books.find((x) => x.id === d.id); if (bk) setStatusOf(bk, o.v); })}>${o.label}</button>`)}</div>
+      <${Btn} kind="primary" icon="plus" onClick=${() => { setEditing(null); setModal(true); }}>加入书架<//>
     </div>
-    <${Card}>
-      <div class="quickadd"><${Icon} name="book" size=${15} class="muted" /><input class="flex1" type="text" value=${quick} placeholder="书名 - 作者，回车快速加入" onInput=${(e) => setQuick(e.target.value)} onKeyDown=${(e) => e.key === 'Enter' && quickAdd()} /><input type="search" value=${q} placeholder="搜索…" style="width:160px" onInput=${(e) => setQ(e.target.value)} /></div>
-      <div class="filters">${[{ v: 'all', n: '所有类型' }, ...typesOf(s).map(([v, n]) => ({ v, n }))].map((t) => html`<${Tag} class=${'click ' + (type === t.v ? 'on' : '')} plain title="右键可重命名 / 删除 / 新建类型" onClick=${() => setType(t.v)} onContextMenu=${(e) => typeMenu(e, s, t.v === 'all' ? '' : t.v)}>${t.n}<//>`)}</div>
-      ${books.length === 0 ? html`<${Empty} icon="book" text="没有匹配的书。" />` : groups.map(([name, list]) => html`
-        <div class="group-h">${name}<i></i><span>${list.length}</span></div>
-        <div class="links">${list.map((b) => html`<div class="lk bk-row" key=${b.id} ...${dragProps('book', { id: b.id })} onContextMenu=${(e) => ctxMenu(e, menu(b), b.title)}>
-          <button class="cv mini" style=${`--cc:${b.color || '#3b6fd6'}`} onClick=${() => setOpen(b.id)}>${b.cover ? html`<img src=${b.cover} alt="" loading="lazy" />` : b.title.slice(0, 4)}</button>
-          <div class="li" onClick=${() => setOpen(b.id)}>
-            <b>${b.title}${b.rating > 0 && html` <${Stars} value=${b.rating} size=${10} />`}</b>
-            <span class="host">${b.author || typeName(s, b.type)}${b.finished ? ` · 读完于 ${b.finished}` : b.started ? ` · 开始于 ${b.started}` : ''}</span>
-            ${b.status === 'reading' && html`<div class="row" style="margin-top:6px;max-width:420px" onClick=${(e) => e.stopPropagation()}><${ProgressCtl} b=${b} compact />${pct(b) >= 100 && html`<button class="btn sm primary" style="margin-left:8px" onClick=${() => setStatusOf(b, 'done')}>读完了</button>`}</div>`}
-            ${b.note && html`<p>${b.note.slice(0, 120)}</p>`}
-            ${b.tags.length > 0 && html`<div class="tags">${b.tags.map((t) => html`<${Tag}>${t}<//>`)}</div>`}
-          </div>
-          <div class="acts">
-            ${b.status === 'want' && html`<button class="btn ghost sm" onClick=${() => setStatusOf(b, 'reading')}>开始读</button>`}
-            ${b.status === 'reading' && html`<button class="btn ghost sm" onClick=${() => setStatusOf(b, 'done')}>读完</button>`}
-            <${IconBtn} icon="note" title=${hasPage(b) ? '打开笔记页' : '新建笔记页'} class=${'ibtn ' + (hasPage(b) ? 'on' : '')} size=${13} onClick=${() => notePage(b)} />
-            <${IconBtn} icon="edit" title="编辑" size=${13} onClick=${() => { setEditing(b); setModal(true); }} />
-            <${IconBtn} icon="trash" class="ibtn danger" title="删除" size=${13} onClick=${() => removeUndo('books', b.id, b.title)} />
-          </div>
-        </div>`)}</div>`)}
-    <//>
+    <div class="rd2-bar">
+      <div class="quickadd flex1"><${Icon} name="book" size=${15} class="muted" /><input class="flex1" type="text" value=${quick} placeholder="书名 - 作者，回车快速加入（会自动找封面）" onInput=${(e) => setQuick(e.target.value)} onKeyDown=${(e) => e.key === 'Enter' && quickAdd()} /></div>
+      <label class="rd2-search"><${Icon} name="search" size=${14} /><input type="search" value=${q} placeholder="搜书名、作者、笔记…" onInput=${(e) => setQ(e.target.value)} /></label>
+    </div>
+    <div class="filters">${[{ v: 'all', n: '所有类型' }, ...typesOf(s).map(([v, n]) => ({ v, n }))].map((t) => html`<${Tag} class=${'click ' + (type === t.v ? 'on' : '')} plain title="右键可重命名 / 删除 / 新建类型" onClick=${() => setType(t.v)} onContextMenu=${(e) => typeMenu(e, s, t.v === 'all' ? '' : t.v)}>${t.n}<//>`)}</div>
+    ${books.length === 0 ? html`<div class="rd2-empty"><${Icon} name="book" size=${28} /><b>${s.books.length ? '没有匹配的书' : '书架还是空的'}</b><p>${s.books.length ? '换个筛选或搜索词试试。' : '在上面输入「书名 - 作者」回车，就放上书架了，封面会自动找。'}</p></div>`
+      : html`
+      ${reading && html`<section class="rd2-sec"><div class="rd2-sh">在读<span>${reading[1].length}</span></div><div class="bk-heros">${reading[1].map(hero)}</div></section>`}
+      ${shelves.map(([name, list]) => html`<section class="rd2-sec" key=${name}><div class="rd2-sh">${name}<span>${list.length}</span></div><div class="bk-shelf">${list.map(tile)}</div></section>`)}`}
     <${BookModal} open=${modal} book=${editing} onClose=${() => setModal(false)} />
     <${Modal} open=${!!sel} onClose=${() => setOpen(null)} title=${sel?.title || ''} wide foot=${sel && html`<${Btn} kind="ghost" icon="edit" onClick=${() => { setEditing(sel); setModal(true); }}>编辑<//><${Btn} kind="ghost" icon="note" onClick=${() => { setOpen(null); notePage(sel); }}>${hasPage(sel) ? '打开笔记页' : '新建笔记页'}<//><span class="flex1"></span>${sel.link && html`<a class="btn" href=${sel.link} target="_blank" rel="noopener"><${Icon} name="external" size=${13} /> 打开链接</a>`}`}>
       ${sel && html`<div class="row" style="align-items:flex-start;gap:18px">
