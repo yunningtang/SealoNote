@@ -5531,3 +5531,9 @@ html[data-theme="dark"] .lk-new{background:#4a3218;color:#f2b36f}
 .lk-b:hover{background:var(--hover);color:var(--text);opacity:1}
 .lk-b.on{color:rgb(var(--ac));opacity:1}.lk-b.heart.on{color:#D9467A}
 @media(max-width:720px){.lk-grid{grid-template-columns:1fr;gap:10px}.lk-card{border-radius:20px;padding:14px 16px 10px}.lk-b{width:38px;height:38px;opacity:1}}
+/* 不要卡片上的彩色边条：要表示优先级 / 类型的地方换成一个小圆点 */
+.lk-card::before{display:none}
+.td-chip{border-left:0;padding-left:8px;display:flex;align-items:center;gap:6px}
+.td-chip::before{content:"";flex:none;width:6px;height:6px;border-radius:50%;background:var(--pc,var(--text-4))}
+.sp-card{box-shadow:none!important}
+.fq-p{width:6px;height:6px;align-self:center;border-radius:50%}

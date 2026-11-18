@@ -7,7 +7,6 @@ import { html, useState, useEffect, useRef } from '../../vendor/preact.js';
 import { useStore, update } from '../store.js';
 import { loadThree, buildSeal } from '../seal3d.js';
 import * as pomo from '../pomo.js';
-import { Room, roomOf, sealSpot } from '../room.js';
 import { Icon } from '../ui.js';
 
 export const HATS = [['', '不戴'], ['beanie', '毛线帽'], ['bow', '蝴蝶结'], ['crown', '小皇冠'], ['phones', '耳机'], ['straw', '草帽'], ['party', '生日帽'], ['chef', '厨师帽'], ['bunny', '兔耳朵'], ['flowers', '花环'], ['cap', '贝雷帽']];
@@ -203,11 +202,10 @@ export default function Pet({ preview = false, bare = false }) {
   const ls = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch { return d; } };
   const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
   const [size, setSizeS] = useState(() => ls('ytos.pet.size', 1)); const [locked, setLockedS] = useState(() => ls('ytos.pet.locked', false));
-  const canSize = !!(desk && desk.setScale), canRoom = !!(desk && desk.setRoom);
-  const [roomOn, setRoomOn] = useState(() => !preview && ls('ytos.pet.room', false));
-  useEffect(() => { if (canSize && size !== 1) desk.setScale(size); if (canRoom && roomOn) desk.setRoom(true); }, []);
+  const canSize = !!(desk && desk.setScale);
+  const roomOn = false; // 小屋已经去掉了
+  useEffect(() => { if (canSize && size !== 1) desk.setScale(size); if (desk && desk.setRoom && ls('ytos.pet.room', false)) { desk.setRoom(false); lsSet('ytos.pet.room', false); } }, []); // 以前开着小屋的：窗口变回汤圆大小
   const setSize = (k) => { k = Math.max(.6, Math.min(1.8, Math.round(k * 10) / 10)); setSizeS(k); lsSet('ytos.pet.size', k); if (canSize) desk.setScale(k); };
-  const toggleRoom = () => { const v = !roomOn; setRoomOn(v); lsSet('ytos.pet.room', v); if (canRoom) desk.setRoom(v); say(v ? '欢迎来我房间' : '我出来啦'); };
   const wheel = (e) => { if (!canSize || !(e.ctrlKey || e.metaKey)) return; e.preventDefault(); setSize(size + (e.deltaY < 0 ? .1 : -.1)); };
 
   // ---- 点一下汤圆：蹦一下，说一句有用的（番茄钟还剩多久 / 今天下一件事 / 打个招呼）
@@ -277,7 +275,6 @@ export default function Pet({ preview = false, bare = false }) {
       ${pomoOn && html`${pomoOn && row('结束这一轮', () => pomo.stop())}<div class="pp-sep"></div>`}
       ${row('换装…', () => openMain('#/settings?sec=seal'))}
       ${canSize && html`<div class="pp-size"><span>大小</span><div>${[[.7, '小'], [1, '中'], [1.3, '大'], [1.6, '特大']].map(([k, l]) => html`<button type="button" class=${Math.abs(size - k) < .05 ? 'on' : ''} onClick=${() => setSize(k)}>${l}</button>`)}</div></div>`}
-      ${canRoom && row(roomOn ? '离开房间' : '汤圆的房间', toggleRoom)}
       <div class="pp-sep"></div>
       ${row(locked ? '取消固定' : '固定在这里', () => { const v = !locked; setLockedS(v); lsSet('ytos.pet.locked', v); say(v ? '我就待在这儿' : '可以拖着我走啦'); })}
       ${desk && row(keys.on === false || keys.needsPermission ? '开启打字计数' : '关闭打字计数', async () => { const r = await desk.setCount(keys.on === false || keys.needsPermission); setKeys(r); if (r.needsPermission) say('在系统设置 → 隐私 → 辅助功能里允许 Sealonote', 5000); else if (r.wayland || r.error === 'wayland') say('Wayland 桌面不允许读键盘，打字计数用不了（X11 可以）', 5000); else if (r.error === 'crashed') say('打字计数连续出错停下了，重启 Sealonote 再试', 5000); }, '只数次数')}
@@ -286,7 +283,7 @@ export default function Pet({ preview = false, bare = false }) {
       ${desk && row('先收起来', () => desk.hide(), '托盘里能再打开')}
     </div>`}
     <div class="pet-top">${top}</div>
-    ${roomOn ? html`<${Room} room=${roomOf(s)} sealAt=${sealSpot(roomOf(s), st.phase === 'work' && !st.paused)}>${doll}<//>` : html`<div class="pet-stage">${doll}</div>`}
+    <div class="pet-stage">${doll}</div>
     ${desk && html`<div class=${'pet-count' + (typing || hover ? ' on' : '')} title="只数按了几下，不记录按了什么">${keys.running || keys.today ? html`今天 <b>${(keys.today || 0).toLocaleString()}</b> 下` : keys.needsPermission ? '点「更多」开启打字计数' : ''}</div>`}
   </div>`;
 }
