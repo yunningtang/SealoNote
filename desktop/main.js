@@ -110,7 +110,7 @@ function showMain(hash) {
   if (!main || main.isDestroyed()) createMain();
   if (hash && /^#\//.test(hash)) main.webContents.executeJavaScript(`location.hash = ${JSON.stringify(hash)}`).catch(() => {});
   if (main.isMinimized()) main.restore();
-  main.show(); main.focus();
+  main.show(); main.focus(); if (vis(ai)) setTimeout(sideBySide, 50);
 }
 
 /* ---------- 便签 ---------- */
@@ -163,16 +163,41 @@ function showNote(id, at) {
 }
 const noteOf = (e) => { for (const [id, w] of notes) if (w.webContents === e.sender) return id; return null; };
 
+/* ---------- 汤圆窗口和主窗口并排，不叠在一起 ---------- */
+// 打开汤圆时如果和主窗口叠着：汤圆靠到主窗口所在屏幕的右边，主窗口让出这块地方（最大化的先还原）。
+// 关掉汤圆时，主窗口还是我们让出来的那个样子（你没再动过它），就还原回去。
+let mainBefore = null, mainShrunk = null;
+const vis = (w) => w && !w.isDestroyed() && w.isVisible() && !w.isMinimized();
+const overlap = (a, b) => a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
+function sideBySide() {
+  if (!vis(main) || !vis(ai) || main.isFullScreen()) return;
+  const mb = main.isMaximized() ? screen.getDisplayMatching(main.getBounds()).workArea : main.getBounds();
+  if (!overlap(mb, ai.getBounds())) return;
+  const wa = screen.getDisplayMatching(main.getBounds()).workArea, GAP = 8;
+  const aw = Math.min(Math.max(ai.getBounds().width, 380), 480, Math.floor(wa.width * .4));
+  const room = wa.width - aw - GAP; if (room < 560) return; // 屏幕太小，并排两个都没法用，就不动
+  const ab = { x: wa.x + wa.width - aw, y: wa.y, width: aw, height: wa.height };
+  mainBefore = { bounds: main.getNormalBounds ? main.getNormalBounds() : main.getBounds(), max: main.isMaximized() };
+  if (main.isMaximized()) main.unmaximize();
+  const x = Math.max(wa.x, Math.min(mb.x, ab.x - GAP - 560)); const nb = { x, y: mainBefore.max ? wa.y : Math.max(wa.y, mb.y), width: ab.x - GAP - x, height: 0 };
+  nb.height = mainBefore.max ? wa.height : Math.min(mb.height, wa.y + wa.height - nb.y);
+  main.setBounds(nb); ai.setBounds(ab); mainShrunk = nb; // 记要求的大小：系统可能稍后才真正改好
+}
+function restoreMain() {
+  const before = mainBefore; mainBefore = null; if (!before || !main || main.isDestroyed()) return;
+  const now = main.getBounds(); if (!mainShrunk || ['x', 'y', 'width', 'height'].some((k) => Math.abs(now[k] - mainShrunk[k]) > 4)) return; // 你自己调过就不管
+  main.setBounds(before.bounds); if (before.max) main.maximize();
+}
 /* ---------- 汤圆（AI 对话）---------- */
 function showAI() {
-  if (ai && !ai.isDestroyed()) { if (ai.isMinimized()) ai.restore(); ai.show(); ai.focus(); return; }
+  if (ai && !ai.isDestroyed()) { if (ai.isMinimized()) ai.restore(); ai.show(); ai.focus(); sideBySide(); return; }
   const w = screen.getPrimaryDisplay().workArea;
   const b = onScreen(cfg.ai) ? cfg.ai : { width: 560, height: Math.min(780, w.height - 80), x: w.x + Math.round((w.width - 560) / 2), y: w.y + 40 };
   ai = new BrowserWindow({ ...b, minWidth: 380, minHeight: 420, show: false, title: '汤圆 · Sealonote', backgroundColor: bg(), icon: ICON, autoHideMenuBar: true, ...frameless(), webPreferences: webPrefs() });
   if (cfg.aiPin) ai.setAlwaysOnTop(true, 'floating');
   trackBounds(ai, ...keyed('ai')); guard(ai);
-  ai.once('ready-to-show', () => ai.show());
-  ai.on('close', (e) => { if (!quitting) { e.preventDefault(); ai.hide(); refreshTray(); } });
+  ai.once('ready-to-show', () => { ai.show(); sideBySide(); });
+  ai.on('close', (e) => { if (!quitting) { e.preventDefault(); ai.hide(); restoreMain(); refreshTray(); } });
   ai.on('closed', () => { ai = null; });
   load(ai, '#/seal');
   refreshTray();
