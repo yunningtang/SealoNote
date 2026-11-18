@@ -4,6 +4,7 @@ import { Icon, IconBtn, Modal } from './ui.js';
 import { todayStr, weekKey, setExtraKinds , setTagOverrides } from './util.js';
 import { seedIfEmpty } from './seed.js';
 import Dashboard from './views/dashboard.js';
+import TodayView from './views/today.js';
 import Todos from './views/todos.js';
 import Planner from './views/planner.js';
 import Reading from './views/reading.js';
@@ -41,13 +42,15 @@ import { Capture } from './capture.js';
 import { Seal } from './seal.js';
 import { dueCount } from './review.js';
 
+// 侧栏「今天」的数字：今天还没做完的待办
+const todayLeft = (s) => { const d = new Date(); const t = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; return s.todos.filter((x) => !x.done && x.due && x.due <= t && (x.dueEnd || x.due) >= t).length; };
 export const ROUTES = [
   { path: 'home', name: '总览', icon: 'home', view: Dashboard },
+  { path: 'today', name: '今天', icon: 'sun', view: TodayView, count: todayLeft },
   { sep: '每一天' },
   { path: 'todos', name: '待办', icon: 'checksq', view: Todos, count: (s) => s.todos.filter((t) => !t.done).length },
   { path: 'brain', name: '大脑', icon: 'brain', view: Brain, count: unsortedCount, show: (s) => s.settings.brainNav !== false },
-  { path: 'plan', href: 'plan/day', name: '今天', icon: 'sun', nav: true, match: (r) => r.path === 'plan' && r.sub === 'day' },
-  { path: 'plan', name: '计划', icon: 'calendar', view: Planner, match: (r) => r.path === 'plan' && r.sub !== 'day' },
+  { path: 'plan', name: '计划', icon: 'calendar', view: Planner },
   { path: 'focus', name: '专注', icon: 'clock', view: Focus },
   { path: 'stickies', name: '便签', icon: 'tack', view: StickiesPage, show: (s) => s.settings.stickyNav !== false },
   { path: 'countdown', name: '倒计时', icon: 'clock', view: CountdownPage, show: (s) => s.settings.cdNav !== false },
@@ -211,7 +214,7 @@ function App() {
     <${Capture} open=${cap} onClose=${() => setCap(false)} />
     <${Seal} key=${s.settings.seal === false ? 'ghost' : 'seal'} ghost=${s.settings.seal === false} />
     <nav class="tabbar">
-      ${[['home', '总览', 'home', (r) => r.path === 'home'], ['todos', '待办', 'checksq', (r) => r.path === 'todos'], ['plan/day', '今天', 'sun', (r) => r.path === 'plan' && r.sub === 'day'], ['notes', '笔记', 'note', (r) => r.path === 'notes']].map(([h, n, ic, m]) => html`<a key=${h} href=${'#/' + h} class=${m(route) ? 'active' : ''}><${Icon} name=${ic} size=${20} /><span>${n}</span></a>`)}
+      ${[['home', '总览', 'home', (r) => r.path === 'home'], ['todos', '待办', 'checksq', (r) => r.path === 'todos'], ['today', '今天', 'sun', (r) => r.path === 'today'], ['notes', '笔记', 'note', (r) => r.path === 'notes']].map(([h, n, ic, m]) => html`<a key=${h} href=${'#/' + h} class=${m(route) ? 'active' : ''}><${Icon} name=${ic} size=${20} /><span>${n}</span></a>`)}
       <button class="tab-cap" onClick=${capture} title="记一下（问汤圆）"><${Icon} name="plus" size=${22} /></button>
       <button onClick=${() => setMenu(true)}><${Icon} name="menu" size=${20} /><span>更多</span></button>
     </nav>

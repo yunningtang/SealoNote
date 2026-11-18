@@ -195,20 +195,28 @@ export function Timeline({ date, blocks: all, onEdit, onCreate, from = 0, to = 2
     if (ev.button !== 0) return;
     ev.preventDefault(); ev.stopPropagation();
     const st = timeToMin(b.start), en = timeToMin(b.end);
-    dragRef.current = { id: b.id, mode, y0: ev.clientY, st, en, moved: false };
+    dragRef.current = { id: b.id, mode, y0: ev.clientY, x0: ev.clientX, st, en, moved: false, to: null };
     const onMove = (e) => {
       const d = dragRef.current; if (!d) return;
+      // 几天并排时（「今天」页）可以横着拖到别的一天：看指针下面是哪一天的时间线
+      let dx = 0;
+      if (d.mode === 'move') {
+        const el = document.elementFromPoint(e.clientX, e.clientY); const tl = el && el.closest('.tl[data-date]');
+        const to = tl && tl.dataset.date !== date && tl.closest('.td-grid') ? tl : null;
+        if (d.to !== to) { if (d.to) d.to.classList.remove('drop-over'); if (to) to.classList.add('drop-over'); d.to = to; }
+        if (to) dx = e.clientX - d.x0;
+      }
       const dm = Math.round(((e.clientY - d.y0) / hourH) * 60 / SNAP) * SNAP;
       if (Math.abs(e.clientY - d.y0) > 3) d.moved = true;
       let ns = d.st, ne = d.en;
       if (d.mode === 'move') { ns = Math.max(from * 60, Math.min(to * 60 - (d.en - d.st), d.st + dm)); ne = ns + (d.en - d.st); }
       else { ne = Math.max(d.st + SNAP, Math.min(to * 60, d.en + dm)); }
-      setGhost({ id: d.id, start: minToTime(ns), end: minToTime(ne) });
+      setGhost({ id: d.id, start: minToTime(ns), end: minToTime(ne), dx });
     };
     const onUp = () => {
       window.removeEventListener('pointermove', onMove); window.removeEventListener('pointerup', onUp);
-      const d = dragRef.current; dragRef.current = null;
-      setGhost((g) => { if (d && d.moved && g && g.id === d.id) upsert('blocks', { id: d.id, start: g.start, end: g.end }); else if (d && !d.moved && mode === 'move') onEdit && onEdit(b); return null; });
+      const d = dragRef.current; dragRef.current = null; const toDate = d && d.to ? d.to.dataset.date : ''; if (d && d.to) d.to.classList.remove('drop-over');
+      setGhost((g) => { if (d && d.moved && g && g.id === d.id) upsert('blocks', { id: d.id, start: g.start, end: g.end, ...(toDate ? { date: toDate } : {}) }); else if (d && !d.moved && mode === 'move') onEdit && onEdit(b); return null; });
     };
     window.addEventListener('pointermove', onMove); window.addEventListener('pointerup', onUp);
   };
@@ -237,7 +245,7 @@ export function Timeline({ date, blocks: all, onEdit, onCreate, from = 0, to = 2
     const min = Math.max(from * 60, Math.min(to * 60 - 15, from * 60 + Math.floor(((e.clientY - r.top) / hourH) * 60 / 15) * 15));
     slotMenu(e, { date, min, onCreate });
   };
-  return html`<div class="tl" style=${`--h:${hourH}px`} onContextMenu=${onSlotMenu} ...${dropProps(['todo', 'block'], dropAt)}>
+  return html`<div class="tl" data-date=${date} style=${`--h:${hourH}px`} onContextMenu=${onSlotMenu} ...${dropProps(['todo', 'block'], dropAt)}>
     ${hours.map((h) => html`<div class=${'hour ' + (onCreate ? 'click' : '')} onClick=${onCreate ? () => onCreate(minToTime(h * 60)) : undefined}><span>${String(h).padStart(2, '0')}:00</span></div>`)}
     ${fx.extra.map((b) => {
       const s = Math.max(timeToMin(b.start), from * 60), e = Math.min(timeToMin(b.end), to * 60); if (e <= s) return null; const hh = Math.max(y(e) - y(s) - 3, Math.min(20, y(e) - y(s) - 1));
@@ -251,7 +259,7 @@ export function Timeline({ date, blocks: all, onEdit, onCreate, from = 0, to = 2
       // 这块是某条待办的一步：块上有个勾，勾了就把那一步标完成
       const stepTodo = b.todoId && b.stepId ? get().todos.find((t) => t.id === b.todoId) : null;
       const step = stepTodo ? stepsOf(stepTodo).find((x) => x.id === b.stepId) : null;
-      return html`<div class=${'blk ' + (ghost && ghost.id === b.id ? 'moving ' : '') + (step ? 'is-step ' : '') + (step && step.done ? 'step-done' : '') + (hh < 34 ? ' one' : '') + (f ? ' has-fx' : '')} key=${b.id} style=${`${ln(b0.id)}top:${y(s)}px;height:${hh}px;--bc:${kindColor(b.kind)}`} title=${`${b.title} ${b.start}–${b.end}${f ? ' · ' + focusLabel(f) : ''}`} onPointerDown=${(ev) => beginDrag(ev, b0, 'move')} onClick=${(ev) => ev.stopPropagation()} onContextMenu=${(ev) => ctxMenu(ev, blockMenuItems(b, { onEdit }), b.title)}>${step && html`<button class="st-cb" title=${step.done ? '标为未完成' : '这一步做完了'} onPointerDown=${(ev) => ev.stopPropagation()} onClick=${(ev) => { ev.stopPropagation(); toggleStep(stepTodo.id, step.id); }}><${Icon} name="check" size=${9} /></button>`}${f && html`<${FocusBar} f=${f} a=${timeToMin(b.start)} e=${timeToMin(b.end)} />`}<b>${b.title}</b><small>${b.start}–${b.end}</small>${f && hh >= 50 && html`<small class="mt-fl">${focusLabel(f)}</small>`}<span class="rz" onPointerDown=${(ev) => beginDrag(ev, b0, 'resize')}></span></div>`;
+      return html`<div class=${'blk ' + (ghost && ghost.id === b.id ? 'moving ' : '') + (step ? 'is-step ' : '') + (step && step.done ? 'step-done' : '') + (hh < 34 ? ' one' : '') + (f ? ' has-fx' : '')} key=${b.id} style=${`${ln(b0.id)}top:${y(s)}px;height:${hh}px;--bc:${kindColor(b.kind)}${ghost && ghost.id === b0.id && ghost.dx ? `;transform:translateX(${ghost.dx}px)` : ''}`} title=${`${b.title} ${b.start}–${b.end}${f ? ' · ' + focusLabel(f) : ''}`} onPointerDown=${(ev) => beginDrag(ev, b0, 'move')} onClick=${(ev) => ev.stopPropagation()} onContextMenu=${(ev) => ctxMenu(ev, blockMenuItems(b, { onEdit }), b.title)}>${step && html`<button class="st-cb" title=${step.done ? '标为未完成' : '这一步做完了'} onPointerDown=${(ev) => ev.stopPropagation()} onClick=${(ev) => { ev.stopPropagation(); toggleStep(stepTodo.id, step.id); }}><${Icon} name="check" size=${9} /></button>`}${f && html`<${FocusBar} f=${f} a=${timeToMin(b.start)} e=${timeToMin(b.end)} />`}<b>${b.title}</b><small>${b.start}–${b.end}</small>${f && hh >= 50 && html`<small class="mt-fl">${focusLabel(f)}</small>`}<span class="rz" onPointerDown=${(ev) => beginDrag(ev, b0, 'resize')}></span></div>`;
     })}
     ${stackChecks(checks.filter((b) => { const m = timeToMin(b.start); return m >= from * 60 && m <= to * 60; }), y).map(({ b, top, dy }) => html`<${CheckMark} key=${b.id} b=${b} date=${date} nowMin=${nowMin} top=${top} dy=${dy} onEdit=${onEdit} />`)}
     ${isToday && nowMin >= from * 60 && nowMin <= to * 60 && html`<div class="now" style=${`top:${y(nowMin)}px`}></div>`}
@@ -544,10 +552,9 @@ function MonthTimeline() {
 }
 
 export default function Planner({ route }) {
-  // 「今天」在侧栏有自己的入口（plan/day），所以「计划」不记、也不回到每日时间线，免得两个入口点进去一样
   const last = lsGet('ytos.plan.tab', 'week');
-  const sub = route.sub || (last && last !== 'day' ? last : 'week');
-  useEffect(() => { if (route.sub && route.sub !== 'day') lsSet('ytos.plan.tab', route.sub); }, [route.sub]);
+  const sub = route.sub || last || 'week';
+  useEffect(() => { if (route.sub) lsSet('ytos.plan.tab', route.sub); }, [route.sub]);
   const ALL = { week: '周计划', day: '每日时间线', weektl: '周时间线', monthtl: '月时间线', month: '月度目标' };
   // 页签顺序可以拖动调整，记住
   const [order, setOrder] = useState(() => { const saved = lsGet('ytos.plan.tabs', '').split(',').filter((k) => ALL[k]); const out = [...saved]; Object.keys(ALL).filter((k) => !saved.includes(k)).forEach((k) => { const i = k === 'monthtl' ? out.indexOf('weektl') : -1; if (i >= 0) out.splice(i + 1, 0, k); else out.push(k); }); return out; });
