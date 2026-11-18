@@ -5265,3 +5265,68 @@ html[data-skin] .dash-home .profile.flat{background:transparent;box-shadow:none;
 .todo.checking .ti{text-decoration:line-through;text-decoration-color:var(--text-4);color:var(--text-4);transition:color .2s}
 .todo.checking{animation:todo-out .22s ease-in .2s both}
 @media (prefers-reduced-motion: reduce){.dash-home>.widget,.dash-home .prog>i,.dash-home .g-bar>i,.dash-home .bwn-bar>i,.todo.checking,.todo.checking .cb{animation:none!important}.dash-home>.widget>.card{transition:none!important}.dash-home>.widget>.card:hover{transform:none!important}}
+
+/* ---------- 手机：照「iOS 26 手机端」设计稿 —— 悬浮玻璃底栏 + 右边圆形汤圆 ---------- */
+@media(max-width:720px){
+  .tabbar{left:0;right:0;bottom:0;height:auto;padding:0 16px calc(14px + env(safe-area-inset-bottom));background:none!important;box-shadow:none!important;display:flex;align-items:center;gap:10px;pointer-events:none}
+  .tabbar::before{content:"";position:fixed;left:0;right:0;bottom:0;height:120px;background:linear-gradient(180deg,transparent,color-mix(in srgb,var(--bg) 85%,transparent) 70%,color-mix(in srgb,var(--bg) 95%,transparent));pointer-events:none;z-index:-1}
+  .tb-pill,.tb-seal{pointer-events:auto;height:62px;box-sizing:border-box;border-radius:31px;background:rgba(255,255,255,.58);backdrop-filter:blur(24px) saturate(190%);-webkit-backdrop-filter:blur(24px) saturate(190%);border:1px solid rgba(255,255,255,.8);box-shadow:0 12px 32px rgba(20,24,40,.14),0 1px 3px rgba(20,24,40,.08),inset 0 1px 0 rgba(255,255,255,.95),inset 0 -1px 0 rgba(20,24,40,.03)}
+  .tb-pill{flex:1;display:flex;padding:4px;min-width:0}
+  .tabbar .tb-pill a,.tabbar .tb-pill button{flex:1;position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;border:0;background:transparent;border-radius:27px;color:#111114;font:600 10px/1.2 var(--font);text-decoration:none;min-width:0;padding:0}
+  .tabbar .tb-pill a.active{color:#2B63E8;background:rgba(20,24,40,.07)}
+  .tb-badge{position:absolute;top:3px;left:calc(50% + 4px);min-width:16px;height:16px;border-radius:8px;background:#D93A3F;color:#fff;font:700 10px/16px var(--font);font-style:normal;padding:0 4px;box-sizing:border-box;text-align:center}
+  .tabbar .tb-seal{flex:0 0 62px;width:62px;display:flex;align-items:center;justify-content:center;padding:0;color:#2B63E8;border-radius:31px}
+  .tb-seal img{width:50px;height:50px;border-radius:25px;object-fit:cover;display:block}
+  .tb-seal:active,.tabbar .tb-pill a:active{transform:scale(.96)}
+  html[data-theme="dark"] .tb-pill,html[data-theme="dark"] .tb-seal{background:rgba(44,44,48,.62);border-color:rgba(255,255,255,.1);box-shadow:0 12px 32px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.08)}
+  html[data-theme="dark"] .tabbar .tb-pill a,html[data-theme="dark"] .tabbar .tb-pill button{color:#ECECEF}
+  html[data-theme="dark"] .tabbar .tb-pill a.active{color:#6E9BFF;background:rgba(255,255,255,.08)}
+  /* 汤圆住进底栏的圆按钮里，手机上不再单独飘一只 */
+  .seal-fab{display:none!important}
+  .main{padding-bottom:110px!important}
+}
+/* ---------- 手机「今天」：照「iOS 26 手机端 · ⑥ 今天」 ---------- */
+.tdm-top,.tdm-title,.tdm-week,.tdm-alloc{display:none}
+@media(max-width:700px){
+  .td{display:flex;flex-direction:column;gap:12px;height:auto;min-height:0;border:0;background:transparent;overflow:visible;border-radius:0}
+  .td-list{padding:0;border:0;display:flex;flex-direction:column;gap:12px}
+  .td-head .td-h2,.td-date{display:none}
+  .tdm-top{display:flex;align-items:center;justify-content:space-between;height:44px;margin-top:4px}
+  .tdm-glass{height:44px;border-radius:22px;background:rgba(255,255,255,.62);backdrop-filter:blur(22px) saturate(180%);-webkit-backdrop-filter:blur(22px) saturate(180%);border:1px solid rgba(255,255,255,.8);box-shadow:0 6px 20px rgba(20,24,40,.10),inset 0 1px 0 rgba(255,255,255,.95)}
+  .tdm-back{padding:0 16px;font:600 15px var(--font);color:#2B63E8;cursor:pointer}.tdm-back:disabled{color:var(--text-4);cursor:default}
+  .tdm-acts{display:flex;align-items:center;padding:0 4px}.tdm-acts button{width:44px;height:44px;border:0;background:transparent;color:#2B63E8;display:flex;align-items:center;justify-content:center;cursor:pointer}
+  .tdm-title{display:flex;align-items:baseline;justify-content:space-between;padding:0 4px}
+  .tdm-title h2{margin:0;font-size:34px;line-height:40px;font-weight:700;letter-spacing:-.4px;color:var(--text)}
+  .tdm-title span{font-size:15px;color:var(--text-3)}
+  .tdm-week{display:flex;align-items:center;gap:2px;margin-top:12px}
+  .tdm-arr{width:28px;height:52px;border:0;background:transparent;color:var(--text-3);display:flex;align-items:center;justify-content:center;padding:0}
+  .tdm-d{flex:1;height:52px;border:0;background:transparent;font-family:inherit;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;color:var(--text);border-radius:21px;position:relative;padding:0}
+  .tdm-d small{font-size:11px;color:var(--text-3)}.tdm-d b{font-size:17px;font-weight:400}
+  .tdm-d.today b{color:#2B63E8;font-weight:600}
+  .tdm-d.on{background:#2B63E8;color:#fff;max-width:42px;margin:0 auto}.tdm-d.on small{color:rgba(255,255,255,.85)}.tdm-d.on b{color:#fff;font-weight:600}
+  .tdm-d i{position:absolute;bottom:5px;width:4px;height:4px;border-radius:2px;background:var(--text-4)}
+  .td-sum{margin:0 4px}
+  .td-list .quickadd{margin:0}
+  .td-scroll{margin:0;padding:4px 16px 10px;border-radius:22px;background:var(--paper);overflow:visible}
+  .td-sec{margin-top:6px}.td-sec-t{font-size:15px;font-weight:600;color:var(--text);letter-spacing:0;min-height:36px}.td-sec-t span{font-size:13px}
+  .td-row{border:0;border-top:1px solid var(--line);border-radius:0;margin:0;box-shadow:none!important;background:transparent}
+  .td-row .todo{min-height:48px;align-items:center}
+  .td .todo .cb{width:24px;height:24px;border-radius:12px}
+  .td-put,.td-when{margin-left:36px}
+  .td-tip{display:none}
+  .td-cal{border-radius:22px;background:var(--paper);padding:10px 12px 12px 6px}
+  .td-cal-h,.td-days,.td-allday{display:none}
+  .td-cal::before{content:"时间线";display:block;font-size:15px;font-weight:600;padding:2px 0 6px 10px}
+  .td-body{flex:none;max-height:none;height:380px;overflow-y:auto}
+  .td-grid{grid-template-columns:44px minmax(0,1fr)!important;padding-top:6px}
+  .td-col{border-left:0}.td-col.today{background:transparent}
+  .tdm-alloc{display:flex;flex-direction:column;gap:10px;border-radius:22px;background:var(--paper);padding:14px 16px}
+  .tdm-alloc>b{font-size:15px;font-weight:600}
+  .tdm-bar{display:flex;height:10px;border-radius:5px;overflow:hidden;background:color-mix(in srgb,#2B63E8 7%,var(--hover));gap:2px}
+  .tdm-leg{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:13px;color:var(--text-2)}
+  .tdm-leg span{display:inline-flex;align-items:center;gap:6px}.tdm-leg i{width:8px;height:8px;border-radius:4px}.tdm-leg em{font-style:normal;color:var(--text-3);font-variant-numeric:tabular-nums}
+  .tdm-none{font-size:14px;color:var(--text-3)}
+  html[data-theme="dark"] .tdm-glass{background:rgba(44,44,48,.62);border-color:rgba(255,255,255,.1);box-shadow:0 6px 20px rgba(0,0,0,.4)}
+  html[data-theme="dark"] .tdm-back,html[data-theme="dark"] .tdm-acts button{color:#6E9BFF}
+  html[data-theme="dark"] .tdm-d.on{background:#3B72F0}
+}

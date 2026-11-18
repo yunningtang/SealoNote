@@ -3,7 +3,7 @@
 import { html, useState, useMemo, useEffect, useRef } from '../../vendor/preact.js';
 import { useStore, upsert, remove, get } from '../store.js';
 import { Icon, IconBtn, Btn, Seg, Collapse, Empty } from '../ui.js';
-import { todayStr, addDays, parseDate, WEEKDAY, sortBy, lsGet, lsSet, timeToMin, pad, PRIORITY } from '../util.js';
+import { todayStr, addDays, parseDate, WEEKDAY, sortBy, lsGet, lsSet, timeToMin, pad, PRIORITY, allKinds } from '../util.js';
 import { onDay, isDropped } from '../remind.js';
 import { TodoItem, TodoModal, QuickAdd, moveOverdueToday } from './todos.js';
 import { Timeline, BlockModal } from './planner.js';
@@ -67,18 +67,22 @@ export default function TodayView({ route } = {}) {
     if (L.done.length) parts.push(`做完 ${L.done.length} 件`);
     return parts.join(' · ');
   }, [s.blocks, day, L]);
+  // 时间分配（手机上在时间线下面一张卡）：按时间块的类型加起来
+  const alloc = useMemo(() => { const m = {}; let tot = 0; for (const b of s.blocks) { if (b.date !== day || b.pomo || b.kind === 'check' || !b.start || !b.end) continue; const v = Math.max(0, timeToMin(b.end) - timeToMin(b.start)); m[b.kind || ''] = (m[b.kind || ''] || 0) + v; tot += v; } return { tot, list: allKinds().filter((k) => m[k.v]).map((k) => ({ ...k, min: m[k.v] })) }; }, [s.blocks, day]);
+  // 手机顶上的一周日期条（周一开始）
+  const wk0 = addDays(day, -((parseDate(day).getDay() + 6) % 7)); const week = Array.from({ length: 7 }, (_, i) => addDays(wk0, i));
   const unplan = (t) => { const ids = get().blocks.filter((b) => b.date === day && b.todoId === t.id).map((b) => b.id); ids.forEach((id) => remove('blocks', id)); upsert('todos', { id: t.id, time: '' }); };
 
   // 右边：n 天，每天一条时间线，共用左边的小时刻度
   // 手机上最多 3 天，再多每列就挤得看不清了
   const [narrow, setNarrow] = useState(() => typeof matchMedia === 'function' && matchMedia('(max-width: 700px)').matches);
   useEffect(() => { if (typeof matchMedia !== 'function') return; const m = matchMedia('(max-width: 700px)'); const h = () => setNarrow(m.matches); m.addEventListener('change', h); return () => m.removeEventListener('change', h); }, []);
-  const n = narrow ? Math.min(nPick, 3) : nPick;
-  const days = Array.from({ length: n }, (_, i) => addDays(from, i));
-  const byDay = useMemo(() => { const m = {}; for (const d of days) m[d] = sortBy(s.blocks.filter((b) => b.date === d && !b.pomo), 'start'); return m; }, [s.blocks, from, n]);
-  const counts = useMemo(() => { const m = {}; for (const d of days) m[d] = s.todos.filter((t) => !t.done && onDay(t, d)).length; return m; }, [s.todos, from, n]);
+  const n = narrow ? 1 : nPick; // 手机：照设计稿只看一天，上面用一周的日期条换天
+  const days = Array.from({ length: n }, (_, i) => addDays(narrow ? day : from, i));
+  const byDay = useMemo(() => { const m = {}; for (const d of days) m[d] = sortBy(s.blocks.filter((b) => b.date === d && !b.pomo), 'start'); return m; }, [s.blocks, from, n, day, narrow]);
+  const counts = useMemo(() => { const m = {}; for (const d of [...days, ...(narrow ? Array.from({ length: 7 }, (_, i) => addDays(addDays(day, -((parseDate(day).getDay() + 6) % 7)), i)) : [])]) m[d] = s.todos.filter((t) => !t.done && onDay(t, d)).length; return m; }, [s.todos, from, n]);
   // 每天还没排进日历的待办（日历顶上那一行，可以直接往下拖）
-  const loose = useMemo(() => { const m = {}; for (const d of days) { const on = new Set(s.blocks.filter((b) => b.date === d && b.todoId).map((b) => b.todoId)); m[d] = sortBy(s.todos.filter((t) => !t.done && onDay(t, d) && !on.has(t.id)), 'priority', 'time'); } return m; }, [s.todos, s.blocks, from, n]);
+  const loose = useMemo(() => { const m = {}; for (const d of days) { const on = new Set(s.blocks.filter((b) => b.date === d && b.todoId).map((b) => b.todoId)); m[d] = sortBy(s.todos.filter((t) => !t.done && onDay(t, d) && !on.has(t.id)), 'priority', 'time'); } return m; }, [s.todos, s.blocks, from, n, day, narrow]);
   const scRef = useRef();
   useEffect(() => { const el = scRef.current; if (!el) return; const now = new Date(); el.scrollTop = Math.max(0, ((now.getHours() * 60 + now.getMinutes()) / 60) * HOUR_H - el.clientHeight * 0.3); }, []);
   const setDays = (v) => { setN(v); lsSet('td.days', String(v)); };
@@ -86,8 +90,18 @@ export default function TodayView({ route } = {}) {
 
   return html`<div class="td" style=${`--cols:${n}`}>
     <section class="td-list">
+      ${narrow && html`<div class="tdm-top">
+        <button type="button" class="tdm-glass tdm-back" disabled=${day === today} onClick=${() => { setDay(today); setFrom(today); }}>回到今天</button>
+        <div class="tdm-glass tdm-acts"><button type="button" aria-label="新建时间块" onClick=${() => setBlk({ date: day, start: '09:00', kind: '' })}><${Icon} name="plus" size=${20} /></button></div>
+      </div>`}
       <div class="td-head">
-        <h2>${dayLabel(day)}</h2>
+        ${narrow && html`<div class="tdm-title"><h2>${dayLabel(day)}</h2><span>${Number(day.slice(5, 7))}月${Number(day.slice(8))}日 ${wd(day)}</span></div>`}
+        ${narrow && html`<div class="tdm-week">
+          <button type="button" class="tdm-arr" aria-label="上一周" onClick=${() => setDay(addDays(day, -7))}><${Icon} name="left" size=${15} /></button>
+          ${week.map((d) => html`<button type="button" key=${d} class=${'tdm-d' + (d === day ? ' on' : '') + (d === today ? ' today' : '')} aria-current=${d === day ? 'date' : undefined} onClick=${() => setDay(d)}><small>${wd(d).slice(1)}</small><b>${Number(d.slice(8))}</b>${counts[d] > 0 && d !== day && html`<i></i>`}</button>`)}
+          <button type="button" class="tdm-arr" aria-label="下一周" onClick=${() => setDay(addDays(day, 7))}><${Icon} name="right" size=${15} /></button>
+        </div>`}
+        <h2 class="td-h2">${dayLabel(day)}</h2>
         <div class="td-date">
           <${IconBtn} icon="left" size=${13} title="前一天" onClick=${() => setDay(addDays(day, -1))} />
           <span>${wd(day)}，${Number(day.slice(5, 7))}月${Number(day.slice(8))}日</span>
@@ -146,6 +160,11 @@ export default function TodayView({ route } = {}) {
         </div>
       </div>
     </section>
+    ${narrow && html`<section class="tdm-alloc" aria-label="时间分配">
+      <b>时间分配</b>
+      <div class="tdm-bar">${alloc.list.map((k) => html`<i key=${k.v} style=${`flex:${k.min};background:${k.color}`} title=${`${k.name} ${(k.min / 60).toFixed(1)} 小时`}></i>`)}</div>
+      ${alloc.tot ? html`<div class="tdm-leg">${alloc.list.map((k) => html`<span key=${k.v}><i style=${`background:${k.color}`}></i>${k.name}<em>${(k.min / 60).toFixed(1)}h</em></span>`)}</div>` : html`<span class="tdm-none">还没有时间块。</span>`}
+    </section>`}
     <${TodoModal} open=${!!tEdit} todo=${tEdit} onClose=${() => setTEdit(null)} />
     <${BlockModal} open=${!!blk} block=${blk && blk.block} date=${blk && (blk.date || (blk.block && blk.block.date))} start=${(blk && blk.start) || '09:00'} kind=${(blk && blk.kind) || ''} onClose=${() => setBlk(null)} />
   </div>`;

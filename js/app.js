@@ -213,10 +213,12 @@ function App() {
     <${SearchPalette} open=${search} onClose=${() => setSearch(false)} />
     <${Capture} open=${cap} onClose=${() => setCap(false)} />
     <${Seal} key=${s.settings.seal === false ? 'ghost' : 'seal'} ghost=${s.settings.seal === false} />
-    <nav class="tabbar">
-      ${[['home', '总览', 'home', (r) => r.path === 'home'], ['todos', '待办', 'checksq', (r) => r.path === 'todos'], ['today', '今天', 'sun', (r) => r.path === 'today'], ['notes', '笔记', 'note', (r) => r.path === 'notes']].map(([h, n, ic, m]) => html`<a key=${h} href=${'#/' + h} class=${m(route) ? 'active' : ''}><${Icon} name=${ic} size=${20} /><span>${n}</span></a>`)}
-      <button class="tab-cap" onClick=${capture} title="记一下（问汤圆）"><${Icon} name="plus" size=${22} /></button>
-      <button onClick=${() => setMenu(true)}><${Icon} name="menu" size=${20} /><span>更多</span></button>
+    <nav class="tabbar" aria-label="主导航">
+      <div class="tb-pill">
+        ${[['home', '总览', 'home', (r) => r.path === 'home'], ['todos', '待办', 'checksq', (r) => r.path === 'todos'], ['today', '今天', 'sun', (r) => r.path === 'today'], ['notes', '笔记', 'note', (r) => r.path === 'notes']].map(([h, n, ic, m]) => html`<a key=${h} href=${'#/' + h} class=${m(route) ? 'active' : ''} aria-current=${m(route) ? 'page' : undefined}><${Icon} name=${ic} size=${22} /><span>${n}</span>${h === 'todos' && s.todos.filter((t) => !t.done).length > 0 && html`<i class="tb-badge">${Math.min(99, s.todos.filter((t) => !t.done).length)}</i>`}</a>`)}
+        <button type="button" onClick=${() => setMenu(true)}><${Icon} name="grid" size=${22} /><span>更多</span></button>
+      </div>
+      <button type="button" class="tb-seal" onClick=${capture} aria-label=${s.settings.seal === false ? '记一下' : '汤圆助手'} title=${s.settings.seal === false ? '记一下' : '汤圆：说一句话，帮你拆成待办 / 时间块 / 笔记'}>${s.settings.seal === false ? html`<${Icon} name="plus" size=${24} />` : html`<img src="assets/seal-face.png" alt="" />`}</button>
     </nav>
   </div>`;
 }
