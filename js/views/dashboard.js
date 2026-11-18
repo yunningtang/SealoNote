@@ -23,6 +23,7 @@ import { SPAN, DEFAULT_LAYOUT, normLayout } from '../widgets.js';
 import { dailySuggestions } from '../prompts.js';
 import { lsGet, lsSet } from '../util.js';
 import { MoneyWidget } from './money.js';
+import TodayView from './today.js';
 import { scheduleTodo, unscheduledParts } from '../schedule.js';
 import { get } from '../store.js';
 import { toast } from '../nav.js';
@@ -66,7 +67,18 @@ function SuggestWidget({ s }) {
   <//>`;
 }
 
-export default function Dashboard() {
+// 总览页顶上切换「总览 / 今天」，记住上次看的是哪个；#/home/today 直接打开「今天」
+export default function Home({ route }) {
+  const [tab, setTab0] = useState(() => (route && route.sub === 'today' ? 'today' : lsGet('home.tab', 'overview')));
+  useEffect(() => { if (route && route.sub === 'today') setTab0('today'); }, [route && route.sub]);
+  const setTab = (v) => { setTab0(v); lsSet('home.tab', v); };
+  return html`<div class=${'home-wrap ' + (tab === 'today' ? 'is-today' : '')}>
+    <div class="home-tabs" role="tablist">${[['overview', '总览', 'home'], ['today', '今天', 'sun']].map(([v, l, ic]) => html`<button type="button" role="tab" aria-selected=${tab === v} class=${tab === v ? 'on' : ''} onClick=${() => setTab(v)}><${Icon} name=${ic} size=${14} />${l}</button>`)}</div>
+    ${tab === 'today' ? html`<${TodayView} />` : html`<${Dashboard} />`}
+  </div>`;
+}
+
+function Dashboard() {
   const s = useStore();
   const now = useClock();
   const pst = usePomo();
