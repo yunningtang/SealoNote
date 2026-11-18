@@ -5330,3 +5330,45 @@ html[data-skin] .dash-home .profile.flat{background:transparent;box-shadow:none;
   html[data-theme="dark"] .tdm-back,html[data-theme="dark"] .tdm-acts button{color:#6E9BFF}
   html[data-theme="dark"] .tdm-d.on{background:#3B72F0}
 }
+/* ---------- 手机：汤圆对话 = 从底部升起的玻璃面板（照「iOS 26 手机端 · ⑤ 汤圆助手」） ---------- */
+@media(max-width:720px){
+  .seal-panel,.seal-panel.big,.seal-panel.full{position:fixed!important;left:0!important;right:0!important;top:calc(54px + env(safe-area-inset-top))!important;bottom:0!important;width:100vw!important;height:auto!important;max-height:none!important;min-height:0!important;
+    border-radius:34px 34px 0 0!important;padding-top:16px;display:flex!important;flex-direction:column;background:#F8F8FB!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;border:0!important;border-top:1px solid rgba(255,255,255,.9)!important;
+    box-shadow:0 -6px 40px rgba(0,0,0,.22),0 0 0 100vmax rgba(10,12,18,.32)!important;transform-origin:50% 100%!important;transition:transform .32s cubic-bezier(.2,.8,.2,1),opacity .2s,box-shadow .3s}
+  .seal-panel.closed{opacity:1;transform:translateY(105%)!important;box-shadow:none!important}
+  .seal-panel::before{content:"";position:absolute;top:7px;left:50%;width:36px;height:5px;margin-left:-18px;border-radius:3px;background:rgba(60,60,67,.3)}
+  html[data-theme="dark"] .seal-panel{background:#1C1C1F!important;border-top-color:rgba(255,255,255,.08)!important}
+  html[data-theme="dark"] .seal-panel::before{background:rgba(235,235,245,.3)}
+  /* 头部：头像 + 名字，右边一组圆按钮 */
+  .seal-panel .seal-h{padding:6px 16px 4px!important;border:0!important;background:transparent!important}
+  .seal-panel .seal-id::before{content:"";width:40px;height:40px;border-radius:20px;flex:none;margin-right:10px;background:#fff url(../assets/seal-face.png) center/cover no-repeat;box-shadow:0 1px 3px rgba(20,24,40,.12)}
+  .seal-panel .seal-id{display:inline-flex;align-items:center;font-size:17px;font-weight:700}
+  .seal-panel .seal-big,.seal-panel .seal-full,.seal-panel .seal-h .ibtn[title="单独一个小窗口"]{display:none!important}
+  .seal-panel .seal-h .ibtn{width:40px;height:40px;border-radius:20px;background:rgba(118,118,128,.12);color:var(--text-2);margin-left:6px;opacity:1!important}
+  /* 欢迎页：去掉被裁掉一半的 3D 汤圆，建议改成一排排胶囊 */
+  .seal-panel .seal-hero{display:none!important}
+  .seal-panel .seal-intro{padding-top:8px!important;text-align:left}
+  .seal-panel .seal-intro h2,.seal-panel .seal-intro h3{font-size:22px!important;line-height:1.3}
+  .seal-panel .seal-body{flex:1 1 auto;min-height:0}
+  .seal-panel .seal-msgs{flex:1 1 auto!important}
+  .seal-panel .seal-intro{background:none!important}
+  .seal-panel .seal-hints{display:flex!important;flex-direction:row!important;flex-wrap:wrap;justify-content:flex-start!important;gap:8px;margin:14px 0 0!important}
+  .seal-panel .seal-intro,.seal-panel .seal-intro *{text-align:left}
+  .seal-panel .seal-hints::before{content:"试试这样说";flex-basis:100%;font-size:13px;font-weight:600;color:var(--text-3);padding-left:4px}
+  .seal-panel .seal-hints>*{flex:0 0 auto!important;max-width:100%;width:auto!important;color:var(--text)!important;min-height:36px!important;padding:0 12px!important;border-radius:18px!important;background:var(--paper)!important;border:1px solid rgba(20,24,40,.08)!important;font-size:13px!important;box-shadow:none!important;gap:6px!important}
+  .seal-panel .seal-hints>* svg,.seal-panel .seal-hints>* .ic{width:14px;height:14px}
+  /* 对话气泡：我 = 蓝色靠右，汤圆 = 白色靠左 + 小头像 */
+  .seal-panel .sm.me .sm-t{background:#2B63E8!important;color:#fff!important;border-radius:20px 20px 6px 20px!important;padding:10px 14px!important;font-size:16px;line-height:22px;max-width:280px;box-shadow:none!important}
+  .seal-panel .sm.bot{position:relative;padding-left:36px!important}
+  .seal-panel .sm.bot::before{content:"";position:absolute;left:0;top:2px;width:28px;height:28px;border-radius:14px;background:#fff url(../assets/seal-face.png) center/cover no-repeat;box-shadow:0 1px 2px rgba(20,24,40,.12)}
+  .seal-panel .sm.bot>.sm-t,.seal-panel .sm.bot>.ac{background:var(--paper);border-radius:6px 20px 20px 20px;padding:12px;box-shadow:0 1px 2px rgba(20,24,40,.05);font-size:15px;line-height:21px}
+  .seal-panel .sm.bot>.sm-t+.ac{margin-top:8px;border-radius:20px}
+  .seal-panel .ac-save{height:40px;border-radius:20px!important;background:#2B63E8!important;color:#fff!important;padding:0 18px!important;font-size:15px;font-weight:600}
+  /* 输入框：白色大圆角，发送是蓝色圆按钮 */
+  .seal-panel .seal-cw{padding:0 12px calc(12px + env(safe-area-inset-bottom))!important}
+  .seal-panel .seal-form{border-radius:25px!important;background:var(--paper)!important;border:0!important;box-shadow:0 4px 14px rgba(20,24,40,.10)!important}
+  .seal-panel .seal-form textarea{font-size:16px!important}
+  .seal-panel .seal-send{width:40px!important;height:40px!important;border-radius:20px!important;background:#2B63E8!important;color:#fff!important;opacity:1}
+  .seal-panel .seal-send:disabled{background:rgba(43,99,232,.35)!important}
+  .seal-panel .sf-note{display:none}
+}
