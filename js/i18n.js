@@ -3,10 +3,16 @@
 // App 和官网首页共用同一个选择（存在这台设备上：localStorage ytos.lang）。
 const KEY = 'ytos.lang';
 export function getLang() {
+  // 链接里带 ?lang=en 或 ?lang=zh 时以它为准，并记住（比如从作品集点进来默认英文）
+  try { const q = new URLSearchParams(location.search).get('lang'); if (q === 'en' || q === 'zh') { localStorage.setItem(KEY, q); return q; } } catch {}
   try { const v = localStorage.getItem(KEY); if (v === 'en' || v === 'zh') return v; } catch {}
   return /^zh/i.test(navigator.language || '') ? 'zh' : 'en'; // 第一次来：跟浏览器的语言
 }
-export function setLang(v) { try { localStorage.setItem(KEY, v); } catch {} location.reload(); }
+export function setLang(v) {
+  try { localStorage.setItem(KEY, v); } catch {}
+  // 去掉链接里的 ?lang=，否则刷新后又被它盖回去
+  const u = new URL(location.href); u.searchParams.delete('lang'); location.replace(u);
+}
 export const isEn = () => getLang() === 'en';
 
 const CJK = /[一-鿿]/;
