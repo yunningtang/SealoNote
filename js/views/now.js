@@ -89,7 +89,7 @@ export function NowWidget() {
     <div class="now-in">
       <div class="now-head">
         <div class="now-clock"><b>${hh}:${mm}</b><small>${ss}</small><div class="now-date">${mdLabel(now, true)}</div></div>
-        ${!search && placeBtn}
+        ${!search && (place || busy) && placeBtn}
       </div>
       ${search && html`<div class="now-msg now-search">
         <input ref=${inRef} type="text" value=${search.q} placeholder="输入城市，回车搜索" onInput=${(e) => setSearch({ ...search, q: e.target.value })} onKeyDown=${(e) => { if (e.key === 'Enter') doSearch(e.target.value); if (e.key === 'Escape') setSearch(null); }} />
@@ -102,7 +102,7 @@ export function NowWidget() {
         <div class="now-feel"><span>体感 <b>${wx.feels}°</b></span><span>风 <b>${wx.wind}</b> km/h</span>${wx.humidity != null && html`<span>湿度 <b>${wx.humidity}</b>%</span>`}</div>
         <div class="now-days">${wx.days.map((x) => { const dd = describe(x.code, true); const dt = new Date(x.date + 'T00:00:00'); const span = Math.max(1, wx.days.reduce((m, y) => Math.max(m, y.hi), -99) - wx.days.reduce((m, y) => Math.min(m, y.lo), 99)); const lo = wx.days.reduce((m, y) => Math.min(m, y.lo), 99); return html`<div key=${x.date}><span>周${WD[dt.getDay()]}</span><${Icon} name=${dd.icon} size=${16} /><small>${x.lo}°</small><i class="nd-bar"><b style=${`left:${((x.lo - lo) / span) * 100}%;width:${((x.hi - x.lo) / span) * 100}%`}></b></i><small>${x.hi}°</small></div>`; })}</div>`
       : place ? html`<div class="now-msg">${err || '正在获取天气…'}</div>`
-      : html`<div class="now-msg"><span class="now-msg-t">${err || '设个位置，看这里的天气'}</span><${Btn} small kind="ghost" onClick=${locate} disabled=${busy}>定位<//><${Btn} small kind="ghost" onClick=${() => { setSearch({ q: '', results: [] }); setTimeout(() => inRef.current && inRef.current.focus(), 50); }}>选择城市<//></div>`}
+      : !search && html`<div class="now-msg now-msg1"><button type="button" class="now-set" onClick=${menu} disabled=${busy}><${Icon} name="pin" size=${13} />${busy ? '正在定位…' : '设置城市，看天气'}</button>${err && html`<small class="now-err">${err === '没有定位权限' ? '没有定位权限，手动选城市就好' : err}</small>`}</div>`}
     </div>
   <//>`;
 }

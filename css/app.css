@@ -5227,3 +5227,41 @@ img.pet-doll{width:auto;height:auto;max-width:200px}
 .td-more{border:0;background:none;font:inherit;font-size:.68rem;color:var(--text-3);text-align:left;padding:0 4px;cursor:pointer}
 .td-col .tl .blk.moving{z-index:20}
 @media(max-width:700px){.td-allday{grid-template-columns:44px repeat(var(--cols),minmax(0,1fr))}}
+/* 总览「正在做」闲着时：只给一个建议，不再把待办列一遍 */
+.dw-one{display:flex;flex-direction:column;gap:6px}
+.dw-one .dw-q{font-size:.76rem;color:var(--text-3);margin:0}
+.dw-pick{font-size:.98rem;font-weight:600;line-height:1.35}
+.dw-one .dw-row{display:flex;align-items:center;gap:10px;margin-top:4px}
+/* 总览：空的倒计时卡不再框中框 */
+.cd-card.empty .cd-empty{border:0;background:none;padding:6px 4px}
+/* 时钟卡：没设位置时只有一个「设置城市」 */
+.now-msg1{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.now-set{display:inline-flex;align-items:center;gap:6px;border:0;border-radius:999px;background:var(--hover);color:var(--text-2);font:inherit;font-size:.8rem;padding:5px 12px;cursor:pointer}
+.now-set:hover{background:color-mix(in srgb,rgb(var(--ac)) 10%,var(--hover));color:var(--text)}
+.now-err{font-size:.72rem;color:var(--text-4)}
+/* 总览：顶上问候不再是一张大白卡；页面缩略图显示开头几行 */
+.dash-home .profile.flat{background:transparent;box-shadow:none;border-color:transparent;padding-left:4px;padding-right:4px}
+html[data-skin] .dash-home .profile.flat{background:transparent;box-shadow:none;backdrop-filter:none;-webkit-backdrop-filter:none}
+.dash-home .profile.flat .p-sub{color:var(--text-3)}
+.thumb .th-text{position:absolute;inset:0;padding:10px 11px;display:flex;flex-direction:column;gap:5px;font-size:.66rem;line-height:1.45;color:var(--text-3);overflow:hidden;text-align:left}
+.thumb .th-text>span:last-child{display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
+.thumb .th-ic{font-size:1.1rem;line-height:1}
+.thumb .th-prev{position:relative}
+/* ---------- 总览动效 ---------- */
+/* 卡片依次浮上来 */
+@keyframes w-in{from{opacity:0;transform:translateY(10px) scale(.985)}to{opacity:1;transform:none}}
+.dash-home>.widget{animation:w-in .5s cubic-bezier(.2,.75,.25,1) both;animation-delay:calc(var(--i,0) * 40ms)}
+/* 鼠标移上去轻轻浮起 */
+.dash-home:not(.customizing)>.widget>.card{transition:transform .25s cubic-bezier(.2,.75,.25,1),box-shadow .25s cubic-bezier(.2,.75,.25,1)}
+.dash-home:not(.customizing)>.widget>.card:not(.flat):hover{transform:translateY(-2px);box-shadow:0 10px 28px -14px rgba(16,24,40,.22),0 0 0 1px var(--line)}
+/* 进度条从 0 涨上去 */
+@keyframes bar-in{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+.dash-home .prog>i,.dash-home .g-bar>i,.dash-home .bwn-bar>i{transform-origin:left center;animation:bar-in .9s cubic-bezier(.2,.75,.25,1) .25s both}
+/* 勾掉待办：勾弹一下、字划掉、这一行淡出收起 */
+@keyframes cb-pop{0%{transform:scale(1)}40%{transform:scale(1.28)}100%{transform:scale(1)}}
+@keyframes todo-out{0%{opacity:1}100%{opacity:0;transform:translateX(6px)}}
+.todo.checking .cb{animation:cb-pop .32s cubic-bezier(.3,1.6,.5,1);background:var(--pc,rgb(var(--ac)));border-color:var(--pc,rgb(var(--ac)));color:#fff}
+.todo.checking .cb svg{opacity:1}
+.todo.checking .ti{text-decoration:line-through;text-decoration-color:var(--text-4);color:var(--text-4);transition:color .2s}
+.todo.checking{animation:todo-out .22s ease-in .2s both}
+@media (prefers-reduced-motion: reduce){.dash-home>.widget,.dash-home .prog>i,.dash-home .g-bar>i,.dash-home .bwn-bar>i,.todo.checking,.todo.checking .cb{animation:none!important}.dash-home>.widget>.card{transition:none!important}.dash-home>.widget>.card:hover{transform:none!important}}

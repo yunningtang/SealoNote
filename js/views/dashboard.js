@@ -66,6 +66,24 @@ function SuggestWidget({ s }) {
   <//>`;
 }
 
+// 笔记时间：刚刚 / 5 分钟前 / 3 小时前 / 昨天 14:20 / 11月3日
+function ago(iso, now = new Date()) {
+  if (!iso) return ''; const t = new Date(iso); const m = Math.round((now - t) / 60000); if (!(m >= 0)) return fmtShort(iso.slice(0, 10));
+  if (m < 1) return '刚刚'; if (m < 60) return `${m} 分钟前`; const sameDay = t.toDateString() === now.toDateString(); if (sameDay) return `${Math.floor(m / 60)} 小时前`;
+  const y = new Date(now); y.setDate(y.getDate() - 1); if (t.toDateString() === y.toDateString()) return `昨天 ${pad(t.getHours())}:${pad(t.getMinutes())}`;
+  return `${t.getMonth() + 1}月${t.getDate()}日`;
+}
+// 页面卡片上的预览：开头几行正文（没有正文就空着）
+const previewOf = (n) => (n.blocks || []).filter((b) => b.html && !['h1', 'h2', 'h3'].includes(b.type)).map((b) => String(b.html).replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim()).filter(Boolean).join(' ').slice(0, 70);
+
+// 数字从 0 滚到实际值（只在第一次出现时滚；系统要求减少动效就直接显示）
+function CountUp({ v }) {
+  const reduce = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const [n, setN] = useState(reduce ? v : 0); const cur = useRef(reduce ? v : 0);
+  useEffect(() => { if (reduce || typeof v !== 'number') { setN(v); cur.current = v; return; } const from = cur.current, t0 = performance.now(), D = 650; let raf; const step = (t) => { const k = Math.min(1, (t - t0) / D); const x = Math.round(from + (v - from) * (1 - Math.pow(1 - k, 3))); cur.current = x; setN(x); if (k < 1) raf = requestAnimationFrame(step); }; raf = requestAnimationFrame(step); return () => cancelAnimationFrame(raf); }, [v]);
+  return n;
+}
+
 export default function Dashboard() {
   const s = useStore();
   const now = useClock();
@@ -89,6 +107,13 @@ export default function Dashboard() {
   const live = usePomoLive(); const liveKey = live ? live.start + live.end + live.title : '';
   const fx = useMemo(() => focusFor(today, blocks0, s.sessions, live), [blocks0, s.sessions, liveKey]);
   const blocks = useMemo(() => sortBy([...blocks0, ...fx.extra], 'start'), [blocks0, fx]);
+  // 顶上那一句：今天几件待办、几个时间块、下一件是什么
+  const daySum = useMemo(() => {
+    const left = (todoGroups.find(([g]) => g === '今天') || [, []])[1].length; const parts = [];
+    if (left) parts.push(`${left} 件待办`); if (blocks0.length) parts.push(`${blocks0.length} 个时间块`);
+    const nx = blocks0.find((b) => timeToMin(b.start) >= nowMin); if (nx) parts.push(`下一件 ${nx.start} ${nx.title || ''}`.trim()); else if (blocks0.length) parts.push('今天的安排都过去了');
+    return parts.join(' · ');
+  }, [todoGroups, blocks0, nowMin]);
   const goals = s.goals[monthKey()] || [];
   const wk = s.weeks[weekKey()];
   const week = weekDays(weekStart());
@@ -181,9 +206,9 @@ export default function Dashboard() {
   useEffect(() => { if (!wmenu) return; const h = (e) => { if (!e.target.closest('.w-menu, .w-dots')) setWmenu(null); }; document.addEventListener('mousedown', h); return () => document.removeEventListener('mousedown', h); }, [wmenu]);
 
   const W = {
-    profile: { title: '个人', span: 2, el: html`<${Card} class="profile">
+    profile: { title: '个人', span: 2, el: html`<${Card} class="profile flat">
         <${AvatarPicker} size=${60} class="big" />
-        <div class="flex1"><div class="p-name">${greeting(now)}，${s.profile.name}</div><div class="p-sub">${s.profile.motto} · ${mdLabel(now, true)} · ${weekKey()}</div></div>
+        <div class="flex1"><div class="p-name">${greeting(now)}，${s.profile.name}</div><div class="p-sub">${mdLabel(now, true)}${daySum ? ' · ' + daySum : s.profile.motto ? ' · ' + s.profile.motto : ''}</div></div>
         <button class=${'btn ghost sm ' + (custom ? 'on' : '')} onClick=${() => setCustom(!custom)}><${Icon} name="grid" size=${14} /> ${custom ? '完成' : '自定义'}</button>
       <//>` },
     now: { title: '此刻', span: 1, el: html`<${NowWidget} />` },
@@ -221,7 +246,7 @@ export default function Dashboard() {
     pages: { title: '最近页面', span: 2, el: html`<${Card}>
         <div class="card-h"><h3>最近页面</h3><div class="card-act"><button class="ibtn" title="新页面" onClick=${() => { const n = newNote(); go('notes/' + n.id); }}><${Icon} name="plus" size=${15} /></button><a class="ibtn" href="#/notes" title="全部"><${Icon} name="right" size=${15} /></a></div></div>
         <div class="thumbs">
-          ${recentNotes.map((n) => html`<a class="thumb" href=${'#/notes/' + n.id} key=${n.id}><div class="th-prev" style=${n.cover ? (/^https?:/.test(n.cover) ? `background-image:url(${n.cover})` : `background:${n.cover}`) : ''}>${!n.cover && html`<div class="th-lines"><i></i><i></i><i></i><i></i></div>`}</div><b>${noteTitle(n)}</b><small>${ancestors(s.notes, n).map(noteTitle).join(' / ') || fmtShort(n.updated.slice(0, 10))}</small></a>`)}
+          ${recentNotes.map((n) => html`<a class="thumb" href=${'#/notes/' + n.id} key=${n.id}><div class="th-prev" style=${n.cover ? (/^https?:/.test(n.cover) ? `background-image:url(${n.cover})` : `background:${n.cover}`) : ''}>${!n.cover && html`<div class="th-text">${n.icon && html`<span class="th-ic">${n.icon}</span>`}<span>${previewOf(n) || '空白页面'}</span></div>`}</div><b>${noteTitle(n)}</b><small>${ancestors(s.notes, n).map(noteTitle).join(' / ') || fmtShort(n.updated.slice(0, 10))}</small></a>`)}
           ${recentNotes.length === 0 && html`<button class="thumb new" onClick=${() => { const n = newNote(); go('notes/' + n.id); }}><div class="th-prev"><${Icon} name="plus" size=${18} /></div><b>新建</b></button>`}
         </div>
       <//>` },
@@ -235,7 +260,7 @@ export default function Dashboard() {
     focus: { title: '专注', span: 1, el: html`<${DoingWidget} s=${s} Timer=${PomoCard} Card=${Card} />` },
     notes: { title: '笔记', span: 1, el: html`<${Card}>
         <div class="card-h"><h3>笔记</h3><div class="card-act"><a class="ibtn" href="#/notes" title="全部"><${Icon} name="plus" size=${15} /></a></div></div>
-        <div class="dot-list">${recentNotes.slice(0, 4).map((n) => html`<a class="dl-i" href=${'#/notes/' + n.id} key=${n.id}><i style=${`background:${(nbOf(s, n.nb) || {}).color || 'var(--text-4)'}`} title=${(nbOf(s, n.nb) || {}).name || ''}></i><div><b>${noteTitle(n)}</b><small>${fmtShort(n.updated.slice(0, 10))} ${n.updated.slice(11, 16)}</small></div></a>`)}</div>
+        <div class="dot-list">${recentNotes.slice(0, 4).map((n) => html`<a class="dl-i" href=${'#/notes/' + n.id} key=${n.id}><i style=${`background:${(nbOf(s, n.nb) || {}).color || 'var(--text-4)'}`} title=${(nbOf(s, n.nb) || {}).name || ''}></i><div><b>${noteTitle(n)}</b><small title=${n.updated.slice(0, 16).replace('T', ' ')}>${ago(n.updated, now)}</small></div></a>`)}</div>
         <a class="more" href="#/notes">查看全部<${Icon} name="right" size=${12} /></a>
       <//>` },
     links: { title: '收藏', span: 1, el: html`<${Card}>
@@ -246,9 +271,9 @@ export default function Dashboard() {
     week: { title: '本周', span: 1, el: html`<${Card}>
         <div class="card-h"><h3>本周</h3></div>
         <div class="wk-stats">
-        <div class="stat-row"><div><small>完成待办</small><b>${doneWeek}</b></div><${Spark} points=${doneSeries} /></div>
+        <div class="stat-row"><div><small>完成待办</small><b><${CountUp} v=${doneWeek} /></b></div><${Spark} points=${doneSeries} /></div>
         <div class="stat-row"><div><small>专注时间</small><b>${fmtH(focusByDay.reduce((a, b) => a + b, 0))}</b></div><${Spark} points=${focusSeries} color="var(--violet)" /></div>
-        <div class="stat-row"><div><small>更新页面</small><b>${s.notes.filter((n) => week.includes((n.updated || '').slice(0, 10))).length}</b></div><${Spark} points=${noteSeries} color="var(--teal)" /></div>
+        <div class="stat-row"><div><small>更新页面</small><b><${CountUp} v=${s.notes.filter((n) => week.includes((n.updated || '').slice(0, 10))).length} /></b></div><${Spark} points=${noteSeries} color="var(--teal)" /></div>
         </div>
       <//>` },
   };
@@ -258,7 +283,7 @@ export default function Dashboard() {
     const ov = over && over.id === id;
     const sz = sizeOf(id); const span = spanOf(id);
     const widthItems = [[1, '⅓ 宽'], [2, '⅔ 宽'], [3, '整行']].map(([n, l]) => ({ label: l, icon: span === n ? 'check' : 'grid', onClick: () => setSize(id, { span: n }) }));
-    return html`<div class=${'widget span-' + span + (drag && drag.id === id ? ' dragging' : '') + (ov ? (over.after ? ' drop-after' : ' drop-before') : '') + (custom ? ' custom' : '')} key=${id} data-id=${id} style=${sz.h ? `--wh:${sz.h}px` : ''}
+    return html`<div class=${'widget span-' + span + (drag && drag.id === id ? ' dragging' : '') + (ov ? (over.after ? ' drop-after' : ' drop-before') : '') + (custom ? ' custom' : '')} key=${id} data-id=${id} style=${(sz.h ? `--wh:${sz.h}px;` : '') + `--i:${Math.min(12, layout.order.indexOf(id))}`}
       draggable=${custom} onDragStart=${(e) => { setDrag({ id }); e.dataTransfer.effectAllowed = 'move'; }} onDragEnd=${() => { setDrag(null); setOver(null); }}
       onDragOver=${(e) => { if (!drag) return; e.preventDefault(); const r = e.currentTarget.getBoundingClientRect(); setOver({ id, after: e.clientX > r.left + r.width / 2 || e.clientY > r.top + r.height * 0.75 }); }}
       onDrop=${(e) => onDrop(e, id)}
@@ -282,7 +307,32 @@ export default function Dashboard() {
   const gridRef = useRef();
   useEffect(() => {
     const g = gridRef.current; if (!g || typeof ResizeObserver === 'undefined') return;
-    const fit = () => { const cs = getComputedStyle(g); const unit = parseFloat(cs.gridAutoRows), gap = parseFloat(cs.rowGap) || 16; if (!(unit < 10)) { /* 行高没被 CSS 设成很小（窄屏）：交给普通网格，跟 CSS 的断点一致 */ g.querySelectorAll(':scope > .widget, :scope > .custom-bar').forEach((w) => { w.style.gridRowEnd = ''; }); return; } g.querySelectorAll(':scope > .widget, :scope > .custom-bar').forEach((w) => { const c = w.classList.contains('custom-bar') ? w : w.firstElementChild; if (!c) return; const h = c.getBoundingClientRect().height; w.style.gridRowEnd = 'span ' + Math.max(1, Math.ceil((h + gap) / (unit + gap))); }); };
+    const fit = () => {
+      const cs = getComputedStyle(g); const unit = parseFloat(cs.gridAutoRows), gap = parseFloat(cs.rowGap) || 16;
+      const ws = [...g.querySelectorAll(':scope > .widget, :scope > .custom-bar')];
+      ws.forEach((w) => { w.style.gridColumnEnd = ''; const c = w.firstElementChild; if (c && !w.classList.contains('custom-bar')) c.style.minHeight = ''; });
+      if (!(unit < 10)) { /* 行高没被 CSS 设成很小（窄屏）：交给普通网格，跟 CSS 的断点一致 */ ws.forEach((w) => { w.style.gridRowEnd = ''; }); return; }
+      const cardOf = (w) => (w.classList.contains('custom-bar') ? w : w.firstElementChild);
+      const nat = new Map(); const spanFor = (h) => Math.max(1, Math.ceil((h + gap) / (unit + gap)));
+      ws.forEach((w) => { const c = cardOf(w); if (!c) return; const h = c.getBoundingClientRect().height; nat.set(w, h); w.style.gridRowEnd = 'span ' + spanFor(h); });
+      if (custom) return; // 自定义时不自动补齐，免得拖动时卡片忽宽忽窄
+      // 补齐：每一列最下面那张卡拉长一点，让各列底边对齐（差得太多就不拉，免得出现一大块空卡）
+      const gr = g.getBoundingClientRect(); const colW = (gr.width - 2 * gap) / 3;
+      const cards = ws.filter((w) => !w.classList.contains('custom-bar'));
+      const rects = () => new Map(cards.map((w) => [w, w.getBoundingClientRect()]));
+      const R = rects();
+      const maxB = Math.max(...cards.map((w) => R.get(w).bottom)); const colOf = (r) => { const a = Math.round((r.left - gr.left) / (colW + gap)); const n = Math.max(1, Math.round((r.width + gap) / (colW + gap))); return Array.from({ length: n }, (_, k) => a + k); };
+      // 每张卡往下拉到「正下方那张卡」的上沿（整行的卡会把上面几列切成一段一段，每段底边对齐）；最底下的拉到全页最低处
+      const plan = [];
+      cards.forEach((w) => {
+        const r = R.get(w); const cs_ = colOf(r);
+        const below = cards.filter((o) => o !== w && R.get(o).top >= r.bottom - 1 && colOf(R.get(o)).some((c) => cs_.includes(c)));
+        const target = below.length ? Math.min(...below.map((o) => R.get(o).top)) - gap : maxB;
+        const extra = target - r.bottom; if (extra < 4 || extra > 320) return;
+        const span = Math.floor((r.height + extra + gap) / (unit + gap)); const h = span * (unit + gap) - gap; if (h > r.height + 1) plan.push([w, h, span]);
+      });
+      plan.forEach(([w, h, span]) => { cardOf(w).style.minHeight = h + 'px'; w.style.gridRowEnd = 'span ' + span; });
+    };
     const ro = new ResizeObserver(() => requestAnimationFrame(fit)); g.querySelectorAll(':scope > .widget > *').forEach((c) => ro.observe(c)); ro.observe(g); fit();
     return () => ro.disconnect();
   }, [layout, custom]);

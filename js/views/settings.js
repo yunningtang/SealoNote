@@ -305,7 +305,7 @@ export default function Settings() {
     seal: () => html`<${Page} title="汤圆" sub="角落里的小海豹">
       <${Group}>
         <${Row} icon="eye" label="显示汤圆"><${Switch} label="显示汤圆" on=${s.settings.seal !== false} onChange=${(v) => update((d) => { d.settings.seal = v; })} /><//>
-        <${Row} icon="right" label="闲时贴边" hint="没人理时缩到屏幕边"><${Switch} label="闲时贴边" on=${s.settings.sealTuck === true} onChange=${(v) => update((d) => { d.settings.sealTuck = v; })} /><//>
+        <${Row} icon="right" label="闲时贴边" hint="没人理时缩到屏幕边"><${Switch} label="闲时贴边" on=${s.settings.sealTuck !== false} onChange=${(v) => update((d) => { d.settings.sealTuck = v; })} /><//>
         <${Row} icon="sparkle" label="光效"><${Switch} label="光效" on=${s.settings.sealGlow !== false} onChange=${(v) => update((d) => { d.settings.sealGlow = v; })} /><//>
         <${Row} icon="star" label="强调色"><${Seg} options=${[{ v: 'none', label: '黑白' }, { v: 'ice', label: '冰蓝' }, { v: 'teal', label: '青绿' }]} value=${s.settings.sealAccent || 'none'} onChange=${(v) => update((d) => { d.settings.sealAccent = v; })} /><//>
       <//>

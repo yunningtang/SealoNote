@@ -62,14 +62,18 @@ export function BattleCard({ t, label = '正在做', onEdit, onPick = null, big 
 export function DoingWidget({ s, Timer, Card }) {
   const [st, setSt] = useState(pomo.get()); useEffect(() => pomo.subscribe((x) => setSt({ ...x })), []); const running = st.phase !== 'idle';
   const t = s.settings.doing && s.todos.find((x) => x.id === s.settings.doing && !x.done);
+  const [pickI, setPickI] = useState(0);
   if (running) return html`<${Timer} />`;
   const today = new Date(); const ymd = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
   if (!t) {
     const picks = mainFirst(s, s.todos.filter((x) => !x.done && (!x.due || x.due <= ymd)).sort((a, b) => a.priority - b.priority)).slice(0, 3);
     return html`<${Card} class="dw">
       <div class="card-h"><h3>正在做</h3><div class="card-act"><a class="ibtn" href="#/focus" title="去专注"><${Icon} name="clock" size=${15} /></a></div></div>
-      <p class="dw-q">今天先做哪一件？</p>
-      ${picks.length ? html`<div class="dw-picks">${picks.map((x) => html`<button type="button" key=${x.id} onClick=${() => setDoing(x.id)}>${questOf(s, x) && html`<i class="q-tag">主线</i>`}${x.title}</button>`)}</div>` : html`<p class="dw-none">今天没有待办，<a href="#/todos">去加一件</a></p>`}
+      ${picks.length ? (() => { const x = picks[pickI % picks.length]; return html`<div class="dw-one">
+        <span class="dw-q">先做这件？</span>
+        <b class="dw-pick">${questOf(s, x) && html`<i class="q-tag">主线</i>`}${x.title}</b>
+        <div class="dw-row"><button type="button" class="bw-cta" onClick=${() => setDoing(x.id)}><${Icon} name="play" size=${10} />就做这件</button>${picks.length > 1 && html`<button type="button" class="bw-text" onClick=${() => setPickI(pickI + 1)}>换一件</button>`}</div>
+      </div>`; })(): html`<p class="dw-none">今天没有待办，<a href="#/todos">去加一件</a></p>`}
     <//>`;
   }
   const sp = stepsProgress(t); const ns = nextStep(t); const allDone = sp.total > 0 && !ns;

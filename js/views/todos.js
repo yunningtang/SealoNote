@@ -288,6 +288,13 @@ function BoardCard({ t, p, onEdit }) {
   </div>`;
 }
 
+// 勾掉：先让勾弹一下、字划掉，再真的标完成（这一行接着收起来）；取消勾选就立刻生效
+function checkOff(e, t) {
+  const row = e.currentTarget.closest('.todo');
+  if (t.done || !row || matchMedia('(prefers-reduced-motion: reduce)').matches) { toggleTodo(t.id); return; }
+  if (row.classList.contains('checking')) return;
+  row.classList.add('checking'); setTimeout(() => toggleTodo(t.id), 420);
+}
 export function TodoItem({ t, onEdit, compact }) {
   const p = PRIORITY[t.priority] || PRIORITY[2];
   const now = useClock();
@@ -305,7 +312,7 @@ export function TodoItem({ t, onEdit, compact }) {
   const nxt = ns && html`<${NextLine} t=${t} open=${showSteps} onToggle=${() => setShowSteps(!showSteps)} />`;
   const chip = sp.total > 0 && html`<button class=${'steps ' + (sp.done === sp.total ? 'all ' : '') + (showSteps ? 'open' : '')} title=${showSteps ? '收起步骤' : '展开步骤'} onClick=${(e) => { e.stopPropagation(); setShowSteps(!showSteps); }}><${Icon} name="list" size=${10} /> ${sp.done}/${sp.total} 步 <${Icon} name=${showSteps ? 'up' : 'down'} size=${9} /></button>`;
   return html`<div class=${'todo p' + t.priority + ' ' + (t.done ? 'done ' : '') + (isDropped(t) ? 'dropped ' : '') + (showSteps && sp.total ? 'has-steps' : '')} style=${`--pc:${p.color}`} onContextMenu=${(e) => ctxMenu(e, todoMenu(t, onEdit), t.title)} ...${dragProps('todo', { id: t.id })} ...${nestProps(t)}>
-    <button class="cb" title=${`${p.label} ${p.name}`} onClick=${() => toggleTodo(t.id)} aria-label="完成"><${Icon} name="check" size=${12} /></button>
+    <button class="cb" title=${`${p.label} ${p.name}`} onClick=${(e) => checkOff(e, t)} aria-label="完成"><${Icon} name="check" size=${12} /></button>
     <div class="tt">
       <div class="ti" onClick=${() => onEdit && onEdit(t)}>${t.title}${isDropped(t) && html`<span class="dropped-tag">不做了</span>`}</div>
       ${!compact && html`<div class="meta">

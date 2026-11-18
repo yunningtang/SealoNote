@@ -310,7 +310,7 @@ export function Seal({ ghost = false, standalone = false } = {}) {
     const tryRestore = (n, toEdge) => { clearTimeout(restoreT); if (restorePerch()) return; if (n <= 0) { if (toEdge) edgeTarget(); return; } restoreT = setTimeout(() => tryRestore(n - 1, toEdge), 400); };
     const onRoute = () => { perch = null; edgeTarget(); tryRestore(4, false); };
     window.addEventListener('hashchange', onRoute); restoreT = setTimeout(() => tryRestore(4, false), 300);
-    const tuckOn = () => sRef.current.settings.sealTuck === true;
+    const tuckOn = () => sRef.current.settings.sealTuck !== false; // 默认开：闲着就贴边，不压在卡片上
     let lookX = 0, lookY = 0, squash = 0, sqv = 0, hop = 0, hopV = 0, flap = 0, happy = 0;
     let tuckK = 0; // 0 露出 → 1 贴边，缓动
     let lastTf = '';
@@ -367,7 +367,7 @@ export function Seal({ ghost = false, standalone = false } = {}) {
         { label: '历史对话', icon: 'clock', onClick: () => { api.current.showHistory && api.current.showHistory(); setOpen(true); } },
         { label: openRef.current ? '关闭对话' : '打开对话', icon: 'maximize', onClick: () => setOpen((o) => !o) },
         'sep',
-        { label: tuckOn() ? '闲时贴边：开' : '闲时贴边：关', icon: 'right', hint: '没人理时缩到屏幕边上', onClick: () => update((d) => { d.settings.sealTuck = !(d.settings.sealTuck !== false); }) },
+        { label: tuckOn() ? '闲时贴边：开' : '闲时贴边：关', icon: 'right', hint: '没人理时缩到屏幕边上', onClick: () => update((d) => { d.settings.sealTuck = d.settings.sealTuck === false; }) },
         { label: '回到右下角', icon: 'refresh', hint: '从卡片上下来', onClick: () => api.current.reset() },
         { label: '设置…', icon: 'settings', onClick: () => go('settings') },
         'sep',
@@ -392,7 +392,7 @@ export function Seal({ ghost = false, standalone = false } = {}) {
       const dockEl = api.current.dockEl;
       if (dockEl && openRef.current && !dragging && dockEl.isConnected) { if (!docked0) docked0 = { tx, ty }; const r = dockEl.getBoundingClientRect(); tx = r.left + r.width / 2 - S / 2; ty = r.top + r.height / 2 - S / 2 + 4; tucked = false; }
       else if (docked0 && !dragging) { tx = docked0.tx; ty = docked0.ty; docked0 = null; }
-      if (!dragging && !perch && !openRef.current && tuckOn() && !tucked && now - nearT > 4000 && Math.abs(tx - x) < 1) { tucked = true; }
+      if (!dragging && !perch && !openRef.current && tuckOn() && !tucked && now - nearT > 2500 && Math.abs(tx - x) < 1) { tucked = true; }
       if (tucked && (perch || openRef.current || !tuckOn())) tucked = false;
       if (!dragging) {
         if (reduce) { x = tx; y = ty; svx = svy = 0; }
