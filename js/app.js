@@ -88,6 +88,28 @@ function parseHash() {
   return { path: path || 'home', sub: rest.join('/') || '', query: Object.fromEntries(new URLSearchParams(q || '')) };
 }
 
+// 手机「更多」：照「iOS 26 手机端 · ④ 更多」——半屏玻璃面板，彩色图标宫格 + 外观 / 完整导航 / 帐号
+const MORE_TILES = [['plan', '计划', 'calendar', '#E5EDFF', '#2B63E8'], ['focus', '专注', 'clock', '#FFEEDD', '#B95F0A'], ['reading', '阅读', 'book', '#E2F5E9', '#1E7A45'], ['links', '收藏', 'bookmark', '#FCE7F0', '#B4306A'],
+  ['notes/canvas', '画布', 'frame', '#EEE8FD', '#6A3FD1'], ['vision', '愿景', 'sparkle', '#FFF4D6', '#946200'], ['explore', '探索', 'compass', '#DFF3F4', '#12707A'], ['brain', '大脑', 'brain', '#FDE8E8', '#B83A3A'],
+  ['stickies', '便签', 'tack', '#FFF4D6', '#8A6A00'], ['countdown', '倒计时', 'target', '#E8F0FB', '#2B5DAA'], ['money', '钱包', 'wallet', '#E6F4EA', '#2E7D4F'], ['settings', '设置', 'settings', '#ECECF0', '#4A4A52']];
+function MoreSheet({ s, onClose, openNav }) {
+  useEffect(() => { const k = (e) => e.key === 'Escape' && onClose(); window.addEventListener('keydown', k); return () => window.removeEventListener('keydown', k); }, []);
+  const badge = { reading: s.books.filter((b) => b.status === 'reading').length, brain: unsortedCount(s), money: dueSoon(s).length };
+  const theme = s.settings.theme || 'auto';
+  return html`<div class="more-sheet-wrap" onClick=${(e) => { if (e.target === e.currentTarget) onClose(); }}>
+    <section class="more-sheet" aria-label="更多" role="dialog">
+      <i class="ms-grab" aria-hidden="true"></i>
+      <div class="ms-h"><h2>更多</h2><button type="button" class="ms-x" aria-label="关闭" onClick=${onClose}><${Icon} name="x" size=${16} /></button></div>
+      <div class="ms-grid">${MORE_TILES.map(([h, n, ic, bg, fg]) => html`<a key=${h} href=${'#/' + h} onClick=${onClose}><span class="ms-ic" style=${`background:${bg};color:${fg}`}><${Icon} name=${ic} size=${26} /></span><span>${n}</span>${badge[h] > 0 && html`<b class="ms-badge">${badge[h]}</b>`}</a>`)}</div>
+      <div class="ms-list">
+        <div class="ms-row"><${Icon} name="moon" size=${20} /><span class="flex1">外观</span><div class="ms-seg" role="radiogroup" aria-label="外观">${[['light', '浅色'], ['dark', '深色'], ['auto', '自动']].map(([v, l]) => html`<button type="button" role="radio" aria-checked=${theme === v} class=${theme === v ? 'on' : ''} onClick=${() => update((d) => { d.settings.theme = v; })}>${l}</button>`)}</div></div>
+        <button type="button" class="ms-row" onClick=${openNav}><${Icon} name="sidebar" size=${20} /><span class="flex1">完整导航</span><small>笔记本 · 页面</small><${Icon} name="right" size=${14} /></button>
+        <a class="ms-row ms-me" href="#/settings" onClick=${onClose}><span class="ms-av">${s.profile.avatar ? html`<img src=${s.profile.avatar} alt="" />` : (s.profile.name || 'R')[0]}</span><span class="flex1"><b>${s.profile.name}</b><small>${s.settings.lastSync ? '已同步' : '本地存储'} · 头像与帐号</small></span><${Icon} name="right" size=${14} /></a>
+      </div>
+    </section>
+  </div>`;
+}
+
 export function useRoute() {
   const [r, setR] = useState(parseHash);
   useEffect(() => {
@@ -116,6 +138,7 @@ function App() {
   const s = useStore();
   const route = useRoute();
   const [menu, setMenu] = useState(false);
+  const [more, setMore] = useState(false); // 手机「更多」半屏面板
   const [cap, setCap] = useState(false);
   const [search, setSearch] = useState(false);
   // 「记一下」并入汤圆：有汤圆就打开对话框，隐藏了汤圆才用本地规则的随手记
@@ -213,10 +236,11 @@ function App() {
     <${SearchPalette} open=${search} onClose=${() => setSearch(false)} />
     <${Capture} open=${cap} onClose=${() => setCap(false)} />
     <${Seal} key=${s.settings.seal === false ? 'ghost' : 'seal'} ghost=${s.settings.seal === false} />
+    ${more && html`<${MoreSheet} s=${s} onClose=${() => setMore(false)} openNav=${() => { setMore(false); setMenu(true); }} />`}
     <nav class="tabbar" aria-label="主导航">
       <div class="tb-pill">
         ${[['home', '总览', 'home', (r) => r.path === 'home'], ['todos', '待办', 'checksq', (r) => r.path === 'todos'], ['today', '今天', 'sun', (r) => r.path === 'today'], ['notes', '笔记', 'note', (r) => r.path === 'notes']].map(([h, n, ic, m]) => html`<a key=${h} href=${'#/' + h} class=${m(route) ? 'active' : ''} aria-current=${m(route) ? 'page' : undefined}><${Icon} name=${ic} size=${22} /><span>${n}</span>${h === 'todos' && s.todos.filter((t) => !t.done).length > 0 && html`<i class="tb-badge">${Math.min(99, s.todos.filter((t) => !t.done).length)}</i>`}</a>`)}
-        <button type="button" onClick=${() => setMenu(true)}><${Icon} name="grid" size=${22} /><span>更多</span></button>
+        <button type="button" class=${more ? 'active' : ''} aria-expanded=${more} onClick=${() => setMore(!more)}><${Icon} name="grid" size=${22} /><span>更多</span></button>
       </div>
       <button type="button" class="tb-seal" onClick=${capture} aria-label=${s.settings.seal === false ? '记一下' : '汤圆助手'} title=${s.settings.seal === false ? '记一下' : '汤圆：说一句话，帮你拆成待办 / 时间块 / 笔记'}>${s.settings.seal === false ? html`<${Icon} name="plus" size=${24} />` : html`<img src="assets/seal-face.png" alt="" />`}</button>
     </nav>

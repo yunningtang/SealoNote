@@ -5372,3 +5372,50 @@ html[data-skin] .dash-home .profile.flat{background:transparent;box-shadow:none;
   .seal-panel .seal-send:disabled{background:rgba(43,99,232,.35)!important}
   .seal-panel .sf-note{display:none}
 }
+/* ---------- 手机「更多」半屏面板（照「iOS 26 手机端 · ④ 更多」） ---------- */
+.more-sheet-wrap{position:fixed;inset:0;z-index:160;background:rgba(10,12,20,.24);display:flex;align-items:flex-end;padding:8px;animation:fi .2s ease-out both}
+.more-sheet{width:100%;max-height:calc(100vh - 120px);overflow-y:auto;box-sizing:border-box;border-radius:36px;padding:8px 18px calc(18px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:14px;background:#F8F8FB;border:1px solid rgba(255,255,255,.85);box-shadow:0 -4px 40px rgba(10,12,20,.18);animation:sheet .26s cubic-bezier(.2,.8,.2,1) both;scrollbar-width:none}
+.ms-grab{align-self:center;width:36px;height:5px;border-radius:3px;background:rgba(60,60,67,.3)}
+.ms-h{display:flex;align-items:center;justify-content:space-between}.ms-h h2{margin:0;font-size:22px;font-weight:700;letter-spacing:-.2px}
+.ms-x{width:36px;height:36px;border-radius:18px;border:0;display:flex;align-items:center;justify-content:center;color:var(--text-2);background:rgba(118,118,128,.14)}
+.ms-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px 8px}
+.ms-grid a{position:relative;display:flex;flex-direction:column;align-items:center;gap:6px;text-decoration:none;color:var(--text);font-size:12px;font-weight:500}
+.ms-ic{width:58px;height:58px;border-radius:18px;display:flex;align-items:center;justify-content:center}
+.ms-grid a:active .ms-ic{transform:scale(.94)}
+.ms-badge{position:absolute;top:-4px;right:calc(50% - 34px);min-width:18px;height:18px;border-radius:9px;background:#D93A3F;color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 5px;box-sizing:border-box}
+.ms-list{border-radius:22px;background:var(--paper);overflow:hidden;margin-top:4px}
+.ms-row{display:flex;align-items:center;gap:12px;min-height:54px;padding:0 14px 0 16px;width:100%;box-sizing:border-box;border:0;border-bottom:1px solid var(--line);background:transparent;font:inherit;font-size:16px;color:var(--text);text-decoration:none;text-align:left}
+.ms-row:last-child{border-bottom:0}.ms-row>svg{color:var(--text-3);flex:none}.ms-row small{font-size:13px;color:var(--text-3)}
+.ms-seg{display:flex;height:32px;border-radius:16px;padding:2px;box-sizing:border-box;background:rgba(118,118,128,.12)}
+.ms-seg button{border:0;border-radius:14px;padding:0 10px;background:transparent;font:inherit;font-size:13px;color:var(--text)}
+.ms-seg button.on{background:var(--paper);box-shadow:0 2px 6px rgba(20,24,40,.10);font-weight:600}
+.ms-me{min-height:62px}.ms-me .flex1{display:flex;flex-direction:column}.ms-me b{font-size:16px;font-weight:600}
+.ms-av{width:36px;height:36px;border-radius:18px;background:#E5EDFF;color:#2B63E8;font-size:15px;font-weight:700;display:flex;align-items:center;justify-content:center;overflow:hidden;flex:none}.ms-av img{width:100%;height:100%;object-fit:cover}
+html[data-theme="dark"] .more-sheet{background:#1C1C1F;border-color:rgba(255,255,255,.08)}
+html[data-theme="dark"] .ms-ic{filter:saturate(.9) brightness(.9)}
+html[data-theme="dark"] .ms-seg button.on{background:#3A3A3E}
+@media(min-width:721px){.more-sheet-wrap{display:none}}
+/* ---------- 手机：所有弹窗都是同一种底部面板（抓手、圆角 34、输入框 44 高、底部按钮不挤出屏幕） ---------- */
+@media(max-width:720px){
+  .modal-bg{background:rgba(10,12,20,.32)!important}
+  .modal{border-radius:34px 34px 0 0!important;background:#F8F8FB!important;padding-top:14px!important;position:relative;box-shadow:0 -6px 40px rgba(0,0,0,.2)!important}
+  .modal::before{content:"";position:absolute;top:7px;left:50%;width:36px;height:5px;margin-left:-18px;border-radius:3px;background:rgba(60,60,67,.3)}
+  .modal-h{padding:8px 18px 6px!important;border:0!important}.modal-h h3{font-size:20px!important;font-weight:700}
+  .modal-h .ibtn{width:36px;height:36px;border-radius:18px;background:rgba(118,118,128,.14)}
+  .modal-b{padding:6px 18px 12px!important;max-height:calc(92vh - 150px)!important}
+  .modal-b input[type=text],.modal-b input:not([type]),.modal-b textarea,.modal-b select,.modal-b .di-btn,.modal-b .ti-btn{min-height:44px;border-radius:12px!important;background:var(--paper)!important;border:1px solid transparent!important;box-shadow:none!important}
+  .modal-f{display:flex;flex-wrap:wrap;gap:8px!important;padding:10px 18px calc(12px + env(safe-area-inset-bottom))!important;border:0!important;justify-content:flex-end}
+  .modal-f .btn{min-height:44px;border-radius:22px!important;padding:0 16px!important}
+  .modal-f .btn.primary{background:#2B63E8!important;color:#fff!important;flex:1 1 auto;justify-content:center}
+  html[data-theme="dark"] .modal{background:#1C1C1F!important}
+  html[data-theme="dark"] .modal::before{background:rgba(235,235,245,.3)}
+}
+/* 手机：右键 / 长按菜单 = 从底部升起的操作面板 */
+@media(max-width:720px){
+  .ctx.popmenu{left:8px!important;right:8px!important;top:auto!important;bottom:calc(8px + env(safe-area-inset-bottom))!important;width:auto!important;max-height:62vh!important;border-radius:26px!important;padding:6px 6px 8px!important;background:#F8F8FB!important;border:0!important;
+    box-shadow:0 -4px 40px rgba(10,12,20,.18),0 0 0 100vmax rgba(10,12,20,.28)!important;animation:sheet .24s cubic-bezier(.2,.8,.2,1) both!important;scrollbar-width:none}
+  .ctx .pm{min-height:46px;font-size:16px;padding:0 14px;border-radius:14px;grid-template-columns:20px minmax(0,1fr) auto;gap:12px}
+  .ctx .pm .ic{width:18px;height:18px}
+  .ctx .pm-sec{padding:10px 14px 4px;font-size:13px}
+  html[data-theme="dark"] .ctx.popmenu{background:#1C1C1F!important}
+}
