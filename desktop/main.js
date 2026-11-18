@@ -166,26 +166,43 @@ const noteOf = (e) => { for (const [id, w] of notes) if (w.webContents === e.sen
 /* ---------- 汤圆窗口和主窗口并排，不叠在一起 ---------- */
 // 打开汤圆时如果和主窗口叠着：汤圆靠到主窗口所在屏幕的右边，主窗口让出这块地方（最大化的先还原）。
 // 关掉汤圆时，主窗口还是我们让出来的那个样子（你没再动过它），就还原回去。
-let mainBefore = null, mainShrunk = null;
+let mainBefore = null, mainShrunk = null, notesMoved = [];
 const vis = (w) => w && !w.isDestroyed() && w.isVisible() && !w.isMinimized();
 const overlap = (a, b) => a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
+const same = (a, b) => b && ['x', 'y', 'width', 'height'].every((k) => Math.abs(a[k] - b[k]) <= 4); // 系统可能差一两像素
+// 便签也让开：挡着汤圆的便签挪到汤圆左边一列；主窗口再让出这一列（让完还有 560 宽的话），变成「主窗口 | 便签 | 汤圆」
 function sideBySide() {
-  if (!vis(main) || !vis(ai) || main.isFullScreen()) return;
-  const mb = main.isMaximized() ? screen.getDisplayMatching(main.getBounds()).workArea : main.getBounds();
-  if (!overlap(mb, ai.getBounds())) return;
-  const wa = screen.getDisplayMatching(main.getBounds()).workArea, GAP = 8;
-  const aw = Math.min(Math.max(ai.getBounds().width, 380), 480, Math.floor(wa.width * .4));
-  const room = wa.width - aw - GAP; if (room < 560) return; // 屏幕太小，并排两个都没法用，就不动
-  const ab = { x: wa.x + wa.width - aw, y: wa.y, width: aw, height: wa.height };
-  mainBefore = { bounds: main.getNormalBounds ? main.getNormalBounds() : main.getBounds(), max: main.isMaximized() };
+  if (!vis(ai)) return;
+  const GAP = 8; let A = ai.getBounds();
+  const mainOn = vis(main) && !main.isFullScreen();
+  const mb = mainOn && (main.isMaximized() ? screen.getDisplayMatching(main.getBounds()).workArea : main.getBounds());
+  const wa = screen.getDisplayMatching(mainOn ? main.getBounds() : A).workArea;
+  const aw = Math.min(Math.max(A.width, 380), 480, Math.floor(wa.width * .4));
+  const dock = mainOn && overlap(mb, A) && wa.width - aw - GAP >= 560; // 屏幕太小，并排没法用，就不挪主窗口
+  if (dock) { A = { x: wa.x + wa.width - aw, y: wa.y, width: aw, height: wa.height }; ai.setBounds(A); }
+  // 便签
+  let col = Infinity;
+  for (const w of [sticky, ...notes.values()]) {
+    if (!vis(w)) continue; const b = w.getBounds(); if (!overlap(b, A)) continue;
+    const to = { x: Math.max(wa.x, A.x - GAP - b.width), y: Math.min(Math.max(b.y, wa.y), wa.y + wa.height - b.height), width: b.width, height: b.height };
+    if (!notesMoved.some((m) => m.w === w)) notesMoved.push({ w, before: b, to }); else notesMoved.find((m) => m.w === w).to = to;
+    w.setBounds(to); col = Math.min(col, to.x);
+  }
+  if (!dock) return;
+  mainBefore = mainBefore || { bounds: main.getNormalBounds ? main.getNormalBounds() : main.getBounds(), max: main.isMaximized() };
   if (main.isMaximized()) main.unmaximize();
-  const x = Math.max(wa.x, Math.min(mb.x, ab.x - GAP - 560)); const nb = { x, y: mainBefore.max ? wa.y : Math.max(wa.y, mb.y), width: ab.x - GAP - x, height: 0 };
+  const x = Math.max(wa.x, Math.min(mb.x, A.x - GAP - 560));
+  const right = col - GAP - x >= 560 ? col - GAP : A.x - GAP; // 让出便签那一列；让不出来就只让汤圆
+  const nb = { x, y: mainBefore.max ? wa.y : Math.max(wa.y, mb.y), width: right - x, height: 0 };
   nb.height = mainBefore.max ? wa.height : Math.min(mb.height, wa.y + wa.height - nb.y);
-  main.setBounds(nb); ai.setBounds(ab); mainShrunk = nb; // 记要求的大小：系统可能稍后才真正改好
+  main.setBounds(nb); mainShrunk = nb; // 记要求的大小：系统可能稍后才真正改好
 }
+// 关掉汤圆：主窗口、便签回到原来的样子；中途你自己挪过、调过的就不管
 function restoreMain() {
+  for (const m of notesMoved) if (m.w && !m.w.isDestroyed() && same(m.w.getBounds(), m.to)) m.w.setBounds(m.before);
+  notesMoved = [];
   const before = mainBefore; mainBefore = null; if (!before || !main || main.isDestroyed()) return;
-  const now = main.getBounds(); if (!mainShrunk || ['x', 'y', 'width', 'height'].some((k) => Math.abs(now[k] - mainShrunk[k]) > 4)) return; // 你自己调过就不管
+  if (!same(main.getBounds(), mainShrunk)) return;
   main.setBounds(before.bounds); if (before.max) main.maximize();
 }
 /* ---------- 汤圆（AI 对话）---------- */
