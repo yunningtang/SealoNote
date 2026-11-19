@@ -172,9 +172,9 @@ export default function Brain() {
     </div>
     ${inbox.length > 0 && html`<${Card} class="br-inbox">
       <div class="card-h"><h3><${Icon} name="dots" size=${15} class="muted" />还没分 <span class="muted small">${inbox.length}</span></h3>${aiOn && html`<button type="button" class="br-ai" disabled=${!!aiBusy} onClick=${() => runAi(true)}><${Icon} name="sparkle" size=${12} />${aiBusy === 'inbox' ? '汤圆在分…' : `让汤圆分这 ${inbox.length} 件`}</button>`}</div>
-      <div class="br-in-list">${inbox.map((t) => html`<div class="br-in" key=${t.id}>
+      <div class="br-in-list">${inbox.map((t) => html`<div class="br-in" key=${t.id} onClick=${(e) => { if (!e.target.closest('button')) setEditing(t); }}>
         <span class="br-in-t">${t.title}</span>
-        <span class="br-in-acts">${REGIONS.map((r) => html`<button type="button" key=${r.id} title=${`${r.label} · ${r.name}`} onClick=${() => moveTo(t, r.id)}><${Icon} name=${r.icon} size=${12} />${r.label}</button>`)}</span>
+        <span class="br-in-acts" aria-label="分到哪个脑区">${REGIONS.map((r) => html`<button type="button" key=${r.id} title=${`分到「${r.label}」· ${r.name}`} aria-label=${`分到${r.label}`} style=${`--c:${r.color || 'var(--text-3)'};--rbg:${r.bg || 'var(--hover)'}`} onClick=${() => moveTo(t, r.id)}><${Icon} name=${r.icon} size=${14} /></button>`)}</span>
       </div>`)}</div>
     <//>`}
     <${Review} s=${s} today=${today} prog=${prog} by=${by} />
