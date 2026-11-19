@@ -5745,3 +5745,48 @@ html[data-theme="dark"] .sk-new{background:#5c5023;color:#f5e3a0}
 .sk-it.ck.due .sk-dia{background:var(--amber)}.sk-it.ck.ok .sk-dia{background:var(--green);border-color:var(--green)}.sk-it.ck.miss .sk-dia{background:var(--red);border-color:var(--red)}.sk-it.sk-bk .sk-dia{margin-top:0}
 .sk-it.sk-bk{padding-right:35px}
 .nv-dot{filter:brightness(.82) saturate(1.5)}
+/* 今天页的「月」：和月时间线同一套格子；待办是空心小圈，不带底色；左边正在看的那天淡淡地标出来 */
+.td-cal .tdm-month.mv-card{border-top:1px solid var(--line);flex:1;display:flex;flex-direction:column;min-height:0}
+.td-cal .tdm-month .mv-grid{flex:1;grid-template-rows:repeat(var(--weeks),minmax(96px,1fr));grid-auto-rows:unset}
+.mv-cell.sel{background:color-mix(in srgb,var(--blue) 6%,transparent)}
+.mv-cell.sel.wkend,.mv-cell.sel.out{background:color-mix(in srgb,var(--blue) 7%,transparent)}
+.tdm-month .mv-cell{cursor:pointer}
+.mv-ev.todo{--c:var(--text-3);display:flex;align-items:center;gap:5px;background:none;color:var(--text-2);padding-left:4px}
+.mv-ev.todo:hover{background:var(--hover)}
+.mv-ck{flex:none;width:8px;height:8px;border-radius:50%;box-shadow:inset 0 0 0 1.3px var(--text-3)}
+.tdm-month .mv-more{border:0;background:none;font:inherit;font-size:.6875rem;text-align:left;cursor:pointer}
+.td-cal .tdm-month.mv-card{padding:0}
+.td-cal .tdm-month .mv-grid{grid-template-rows:repeat(var(--weeks),minmax(0,1fr))}
+.td-cal .tdm-month .mv-cell{overflow:hidden}
+.mv-ev.todo .mv-tt{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.td-cal .tdm-month .mv-grid{min-height:0}.td-cal .tdm-month .mv-cell{min-height:0;padding-bottom:4px}
+/* ===== 黑夜模式：便利贴不再是发灰的土黄 / 酒红，而是深色纸 + 一点点那个颜色，顶上一条亮色边 ===== */
+.stk-yellow{--stk-hue:#f5d76e}.stk-pink{--stk-hue:#f4a7c0}.stk-blue{--stk-hue:#9cc3f5}.stk-green{--stk-hue:#a8dbb0}.stk-purple{--stk-hue:#c7b3f0}.stk-gray{--stk-hue:#c9ccd2}
+html[data-theme="dark"] .stk{--stk:color-mix(in srgb,var(--stk-hue,#f5d76e) 13%,#242426);box-shadow:inset 0 3px 0 color-mix(in srgb,var(--stk-hue,#f5d76e) 75%,transparent),0 0 0 1px rgba(255,255,255,.06),0 8px 24px -14px rgba(0,0,0,.6)}
+html[data-theme="dark"] .nv.stk{box-shadow:inset 0 3px 0 color-mix(in srgb,var(--stk-hue,#f5d76e) 80%,transparent)}
+html[data-theme="dark"] .nv.stk .nv-bar{background:transparent}
+html[data-theme="dark"] .stk,html[data-theme="dark"] .nv.stk{color:#ecebe6}
+.nv-dot{background:var(--stk-hue,var(--stk))}
+html[data-theme="dark"] .nv-dot{filter:none;box-shadow:0 0 0 1.5px rgba(255,255,255,.15)}
+/* 汤圆的气泡 / 按钮条 / 计时也跟着黑夜 */
+html[data-theme="dark"] .pet{--pet-ink:#eeede9;--pet-mute:#9b9a95;--pet-bg:#2a2a2d;--pet-line:rgba(255,255,255,.09)}
+html[data-theme="dark"] .pet-bar .pb:hover{background:#3a3a3e}
+html[data-theme="dark"] .pet-bar .pb.on{background:#eeede9;color:#1f1e1c}
+html[data-theme="dark"] .pet-count{background:rgba(42,42,45,.92);color:#b9b8b3}
+/* 便签里的计时卡片：暂停 / 继续按钮在黑夜里不要一块白 */
+html[data-theme="dark"] .now-card .nc-acts .nc-main{background:#3a3a3e;color:#f2f1ed}
+html[data-theme="dark"] .now-card .nc-acts .nc-main:hover{background:#48484d}
+/* 便签窗口：两页切换、透明度滑杆、今天的日期行、便利贴页 */
+.sk-tabs{-webkit-app-region:no-drag}
+.sk-tab-n{font-style:normal;margin-left:4px;font-size:.6875rem;font-weight:500;color:var(--text-4)}
+.sk-tabs button.on .sk-tab-n{color:var(--text-3)}
+.sk-day{display:flex;align-items:baseline;gap:8px;padding:0 4px}
+.sk-day b{font-size:.875rem;font-weight:650;color:var(--text)}
+.sk-day span{font-size:.75rem;color:var(--text-3)}
+.sk-op2{flex:none;display:flex;align-items:center;gap:8px;height:38px;padding:0 10px 0 12px;border-bottom:1px solid var(--line);font-size:.75rem;color:var(--text-2);background:var(--paper);-webkit-app-region:no-drag}
+.sk-op2 input{flex:1;min-width:60px;accent-color:var(--blue)}
+.sk-op2 b{width:34px;text-align:right;font-weight:600;font-variant-numeric:tabular-nums;color:var(--text)}
+.sk-op2-x{height:24px;padding:0 10px;border:0;border-radius:7px;background:var(--hover);font:inherit;font-size:.75rem;color:var(--text);cursor:pointer}
+.nv.stk .sk-op2{background:rgba(255,255,255,.35);border-color:rgba(0,0,0,.06)}
+html[data-theme="dark"] .nv.stk .sk-op2{background:rgba(0,0,0,.25)}
+.sk-stks .stk-grid{display:flex;flex-direction:column;gap:10px}

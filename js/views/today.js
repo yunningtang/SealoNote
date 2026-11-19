@@ -41,15 +41,21 @@ function MonthGrid({ s, from, day, today, onPick, onOpenDay, onBlock, onTodo }) 
   const last = new Date(fd.getFullYear(), fd.getMonth() + 1, 0).getDate();
   const weeks = Math.ceil(((fd.getDay() + 6) % 7 + last) / 7);
   const cells = Array.from({ length: weeks * 7 }, (_, i) => addDays(start, i));
-  const MAX = 3;
+  const MAX = 4;
   const items = useMemo(() => { const m = {}; for (const d of cells) m[d] = []; for (const b of s.blocks) { if (b.pomo || !m[b.date]) continue; m[b.date].push({ k: 'b', b, t: b.start || '' }); } for (const t of s.todos) { if (t.done || !t.due) continue; for (const d of cells) if (onDay(t, d) && !m[d].some((x) => x.k === 'b' && x.b.todoId === t.id)) m[d].push({ k: 't', t, tm: t.time || '99:99' }); } for (const d of cells) m[d].sort((a, b) => (a.k === 'b' ? a.t : a.tm) < (b.k === 'b' ? b.t : b.tm) ? -1 : 1); return m; }, [s.blocks, s.todos, from]);
-  return html`<div class="tdm-month">
-    <div class="tdmo-w">${['一', '二', '三', '四', '五', '六', '日'].map((w) => html`<span key=${w}>${w}</span>`)}</div>
-    <div class="tdmo-grid" style=${`--weeks:${weeks}`}>${cells.map((d) => { const list = items[d] || []; const out = d.slice(0, 7) !== first.slice(0, 7); return html`<div key=${d} class=${'tdmo-c' + (out ? ' out' : '') + (d === today ? ' today' : '') + (d === day ? ' sel' : '')} onClick=${() => onPick(d)} onDblClick=${() => onOpenDay(d)} title="点一下：左边看这天；双击：打开这天的时间线" ...${dropProps(['todo'], (x) => { const t = get().todos.find((y) => y.id === x.id); if (t) upsert('todos', { id: t.id, due: d, ...(t.dueEnd ? { dueEnd: '' } : {}) }); onPick(d); })}>
-        <b class="tdmo-n">${Number(d.slice(8)) === 1 ? `${Number(d.slice(5, 7))}月1日` : Number(d.slice(8))}</b>
-        ${list.slice(0, MAX).map((x) => x.k === 'b' ? html`<button type="button" key=${x.b.id} class="tdmo-i" onClick=${(e) => { e.stopPropagation(); onBlock(x.b); }}><i style=${`background:${kindColor(x.b.kind || 'focus')}`}></i><em>${x.b.start}</em><span>${x.b.title || '时间块'}</span></button>`
-          : html`<button type="button" key=${x.t.id} class="tdmo-i todo" onClick=${(e) => { e.stopPropagation(); onTodo(x.t); }}><i class="tdmo-ck"></i>${x.t.time && html`<em>${x.t.time}</em>`}<span>${x.t.title}</span></button>`)}
-        ${list.length > MAX && html`<button type="button" class="tdmo-more" onClick=${(e) => { e.stopPropagation(); onOpenDay(d); }}>还有 ${list.length - MAX} 项</button>`}
+  // 和「计划 → 月时间线」同一套格子（周一…周日、左上角日期、今天蓝色圆点、彩色时间块条），只多了待办（空心圈）和「左边看哪天」的选中
+  const mins = (b) => Math.max(0, timeToMin(b.end) - timeToMin(b.start));
+  return html`<div class="tdm-month mv-card">
+    <div class="mv-head">${WEEKDAY.map((w, i) => html`<span key=${w} class=${i >= 5 ? 'wkend' : ''}>${w}</span>`)}</div>
+    <div class="mv-grid" style=${`--weeks:${weeks}`}>${cells.map((d, i) => { const list = items[d] || []; const out = d.slice(0, 7) !== first.slice(0, 7); const more = list.length - MAX; const tot = list.reduce((n, x) => n + (x.k === 'b' && x.b.end ? mins(x.b) : 0), 0);
+      return html`<div key=${d} class=${'mv-cell' + (out ? ' out' : '') + (d === today ? ' today' : '') + (d === day ? ' sel' : '') + (i % 7 >= 5 ? ' wkend' : '') + (d < today ? ' past' : '')} onClick=${() => onPick(d)} onDblClick=${() => onOpenDay(d)} title="点一下：左边看这天；双击：打开这天的时间线" ...${dropProps(['todo'], (x) => { const t = get().todos.find((y) => y.id === x.id); if (t) upsert('todos', { id: t.id, due: d, ...(t.dueEnd ? { dueEnd: '' } : {}) }); onPick(d); })}>
+        <div class="mv-top"><span class="mv-num">${Number(d.slice(8)) === 1 ? `${Number(d.slice(5, 7))}月1日` : Number(d.slice(8))}</span>${tot > 0 && html`<span class="mv-total">${(tot / 60).toFixed(tot % 60 ? 1 : 0)}h</span>`}</div>
+        <div class="mv-items">
+          ${list.slice(0, more > 0 ? MAX - 1 : MAX).map((x) => x.k === 'b'
+            ? html`<button type="button" key=${x.b.id} class="mv-ev" style=${`--c:${kindColor(x.b.kind || 'focus')}`} title=${`${x.b.title} ${x.b.start}–${x.b.end || ''}`} onClick=${(e) => { e.stopPropagation(); onBlock(x.b); }}><span class="mv-t">${x.b.start}</span>${x.b.title || '（未命名）'}</button>`
+            : html`<button type="button" key=${x.t.id} class="mv-ev todo" title=${'待办：' + x.t.title} onClick=${(e) => { e.stopPropagation(); onTodo(x.t); }}><i class="mv-ck"></i>${x.t.time && html`<span class="mv-t">${x.t.time}</span>`}<span class="mv-tt">${x.t.title}</span></button>`)}
+          ${more > 0 && html`<button type="button" class="mv-more" onClick=${(e) => { e.stopPropagation(); onOpenDay(d); }}>还有 ${more + 1} 项</button>`}
+        </div>
       </div>`; })}</div>
   </div>`;
 }
