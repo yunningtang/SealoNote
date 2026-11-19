@@ -351,7 +351,6 @@ export function QuickAdd({ defaults = {}, placeholder = '添加待办… 例如�
   };
   return html`<div class="quickadd">
         <input class="flex1" type="text" value=${v} placeholder=${placeholder} onInput=${(e) => setV(e.target.value)} onKeyDown=${(e) => e.key === 'Enter' && add()} />
-    <span class="hint">@日期 时间 !优先级 #标签</span>
   </div>`;
 }
 

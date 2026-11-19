@@ -332,7 +332,7 @@ function TagsView({ notes }) {
   ], '#' + t);
   const cur = sel && tags.some(([t]) => t === sel) ? sel : (tags[0] ? tags[0][0] : null);
   const pages = cur ? sortBy(notes.filter((n) => n.tags.includes(cur)), '-updated') : [];
-  return html`<div class="page"><div class="crumbs"><${NotesBack} /><span>/</span><b>标签</b><span class="flex1"></span><span class="small muted">${tags.length} 个标签 · 右键可重命名或移除</span></div><div class="page-body">
+  return html`<div class="page"><div class="crumbs"><${NotesBack} /><span>/</span><b>标签</b><span class="flex1"></span><span class="small muted">${tags.length} 个标签</span></div><div class="page-body">
     ${tags.length === 0 ? html`<${Empty} icon="tag" text="还没有标签。在页面标题下面点「+ 标签」给页面加标签。" />` : html`
       <div class="tag-cloud">${tags.map(([t, c]) => html`<button key=${t} class=${'tag-chip ' + (t === cur ? 'on' : '')} style=${(([l, d]) => `--tc:${l};--tcd:${d}`)(tagColor(t))} onClick=${() => setSel(t)} onContextMenu=${(e) => tagMenu(e, t)}><span>${t}</span><small>${c}</small></button>`)}</div>
       ${cur && html`<div class="tag-group"><div class="sec-h"><span>#${cur}</span><span class="muted">${pages.length} 页</span><span class="flex1"></span><button class="btn ghost sm" onClick=${() => go('notes?tag=' + encodeURIComponent(cur))}>在列表里筛选</button></div>
@@ -593,5 +593,5 @@ function GraphView({ notes }) {
     return () => g.destroy();
   }, [notes]);
   const links = notes.reduce((n, x) => n + linksOf(x.body).length, 0);
-  return html`<div class="graph-wrap"><div class="crumbs"><${NotesBack} /><span>/</span><b>图谱</b><span class="flex1"></span><span class="small muted">${notes.length} 页 · ${links} 条链接 · 拖动节点，点击打开</span></div><canvas ref=${ref} class="graph"></canvas></div>`;
+  return html`<div class="graph-wrap"><div class="crumbs"><${NotesBack} /><span>/</span><b>图谱</b><span class="flex1"></span><span class="small muted">${notes.length} 页 · ${links} 条链接</span></div><canvas ref=${ref} class="graph"></canvas></div>`;
 }

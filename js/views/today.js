@@ -169,7 +169,7 @@ export default function TodayView({ route } = {}) {
         ${L.inbox.length > 0 && html`<${Section} title="收件箱 · 没定日期" n=${L.inbox.length} open=${open.inbox} onToggle=${() => tog('inbox')}>
           ${L.inbox.map((t) => html`<${Row} key=${t.id} t=${t} onEdit=${setTEdit} />`)}
         <//>`}
-        <p class="td-tip"><${Icon} name="cursor" size=${11} />${narrow ? '把待办拖到下面的日历上就排好时间了' : '把待办拖到右边的日历上就排好时间了；日历里的块能拖到别的天，拖回这里就从日历拿掉'}</p>
+        
       </div>
     </section>
 

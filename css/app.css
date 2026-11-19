@@ -5790,3 +5790,4 @@ html[data-theme="dark"] .now-card .nc-acts .nc-main:hover{background:#48484d}
 .nv.stk .sk-op2{background:rgba(255,255,255,.35);border-color:rgba(0,0,0,.06)}
 html[data-theme="dark"] .nv.stk .sk-op2{background:rgba(0,0,0,.25)}
 .sk-stks .stk-grid{display:flex;flex-direction:column;gap:10px}
+.skin-tip:empty{display:none}

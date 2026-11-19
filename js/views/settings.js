@@ -286,7 +286,7 @@ export default function Settings() {
             <span class="skin-prev" style=${`background:${k.bg}`}><i style=${`left:6px;top:6px;width:18px;height:40px;background:${k.card};box-shadow:0 0 0 1px ${k.line}`}></i><i style=${`left:30px;top:6px;width:52px;height:17px;background:${k.card};box-shadow:0 0 0 1px ${k.line}`}></i><i style=${`left:30px;top:29px;width:52px;height:17px;background:${k.card};box-shadow:0 0 0 1px ${k.line}`}></i><i style=${`left:88px;top:6px;right:6px;height:40px;background:${k.card};box-shadow:0 0 0 1px ${k.line}`}></i><i style=${`left:92px;top:12px;width:22px;height:6px;border-radius:3px;background:${k.ac}`}></i></span>
             <b>${k.n}</b></button>`)}</div>
         <//>
-        <p class="skin-tip">${skinPv ? html`正在预览「${(skins.find((k) => k.v === skinPv) || {}).n}」——整个界面已经换上了，点一下就用这个；移开鼠标回到原来的` : '鼠标移到一个主题上，整个界面会先换上它预览一下'}</p>
+        <p class="skin-tip">${skinPv ? html`正在预览「${(skins.find((k) => k.v === skinPv) || {}).n}」——整个界面已经换上了，点一下就用这个；移开鼠标回到原来的` : ''}</p>
         <${Row} icon="sparkle" label="毛玻璃" hint="老电脑上可能会卡"><${Switch} label="毛玻璃" on=${s.settings.fx === 'full'} onChange=${(v) => update((d) => { d.settings.fx = v ? 'full' : 'lite'; })} /><//>
       <//>
     <//>`,
@@ -297,7 +297,6 @@ export default function Settings() {
       <${Group}>
         ${WIDGETS.map(([id, label]) => html`<${Row} key=${id} icon=${WIDGET_ICON[id] || 'grid'} label=${label}><${Switch} label=${label} on=${!dash.hidden.includes(id)} onChange=${(v) => update((d) => { d.settings.dash = toggleWidget(d.settings.dash, id, v); })} /><//>`)}
       <//>
-      <p class="sx-foot">顺序和大小在总览右上角「自定义」里拖动调整。</p>
       <${Group} title="侧栏">
         <${Row} icon="brain" label="大脑" hint="按脑区看待办"><${Switch} label="侧栏显示大脑" on=${s.settings.brainNav !== false} onChange=${(v) => update((d) => { d.settings.brainNav = v; })} /><//>
         <${Row} icon="tack" label="便签" hint="便利贴；可以弹出到桌面，桌面上还能看今天的焦点和安排"><${Switch} label="侧栏显示便签" on=${s.settings.stickyNav !== false} onChange=${(v) => update((d) => { d.settings.stickyNav = v; })} /><//>
@@ -316,7 +315,6 @@ export default function Settings() {
           <div class="pet-dress-prev"><${Pet} preview=${true} /></div>
           <div class="pet-dress-opts">
             ${[['帽子', 'hat', HATS], ['脖子', 'neck', NECKS], ['围巾', 'scarf', SCARVES]].map(([label, k, opts]) => html`<div class="pd-row" key=${k}><b>${label}</b><div class="pd-chips">${opts.map(([v, l]) => html`<button type="button" key=${v} class=${'pd-chip ' + (petLook(s)[k] === v ? 'on' : '')} style=${k === 'scarf' && v ? `--sw:${v}` : ''} onClick=${() => setPetLook({ [k]: v })}>${k === 'scarf' && v ? html`<i></i>` : ''}${l}</button>`)}</div></div>`)}
-            <p class="small muted">桌面版里汤圆会坐在桌面上：你打字它跟着拍鳍，下面写着今天敲了几下（只数次数，不记内容）；番茄钟在走时头顶有计时环。按住拖可以挪位置（也可以固定住），往上一甩打开便签，点一下出菜单，Ctrl + 滚轮或者菜单里能调大小。托盘里可以开关。换的装扮跟着账号同步。</p>
             ${window.sealonote && window.sealonote.pet ? html`<div class="row" style="gap:8px"><button class="sx-btn" onClick=${() => window.sealonote.pet.show()}>显示桌面汤圆</button><button class="sx-btn" onClick=${() => window.sealonote.pet.hide()}>收起</button></div>` : window.sealonote && window.sealonote.desktop ? html`<p class="small muted">要用桌面汤圆，请安装 0.6 或更新的桌面版。</p>` : ''}
           </div>
         </div>

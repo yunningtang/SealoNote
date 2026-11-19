@@ -356,7 +356,7 @@ export default function Sticky() {
     ${opOpen && desk && html`<${OpacityBar} op=${op} onChange=${setOpacity} onClose=${() => setOpOpen(false)} />`}
     <div class="sk-body">${mode === 'notes'
       ? html`<div class="sk-pane sk-stks">${list.length === 0
-          ? html`<button type="button" class="stk-empty" onClick=${addOne}><${Icon} name="plus" size=${14} />贴一张便利贴<small>写完会自动保存；右上角可以单独贴到桌面</small></button>`
+          ? html`<button type="button" class="stk-empty" onClick=${addOne}><${Icon} name="plus" size=${14} />贴一张便利贴</button>`
           : html`<div class="stk-grid">${list.map((n) => html`<${StickyCard} key=${n.id} n=${n} s=${s} foot onOpen=${(id) => openMain('notes/' + id)} autoFocus=${fresh === n.id} onDone=${() => setFresh('')} />`)}</div>`}</div>`
       : html`<${TodayPane} s=${s} now=${now} />`}</div>
   </div>`;
@@ -407,14 +407,12 @@ export function StickiesPage() {
     ${list.length === 0 ? html`<div class="stp2-empty">
         <div class="stp2-demo" aria-hidden="true"><i class="stk-yellow"></i><i class="stk-pink"></i><i class="stk-blue"></i></div>
         <b>随手记的东西贴在这里</b>
-        <p>一张便利贴就是一页笔记：会同步，也能放进任何本子。按 Ctrl+V 直接把剪贴板里的文字贴成一张。</p>
         <div class="stp2-empty-act"><button type="button" class="btn primary" onClick=${add}><${Icon} name="plus" size=${14} />贴第一张</button><button type="button" class="btn ghost" onClick=${() => setPick(true)}>从笔记添加</button></div>
       </div>`
       : html`<div class="stp2-wall">
         ${list.map((n) => html`<${StickyCard} key=${n.id} n=${n} s=${s} foot onOpen=${(id) => go('notes/' + id)} autoFocus=${fresh === n.id} onDone=${() => setFresh('')} />`)}
         <button type="button" class="stp2-add" onClick=${add} aria-label="新便利贴"><${Icon} name="plus" size=${20} /><span>新便利贴</span></button>
       </div>`}
-    <p class="stp2-tip"><${Icon} name="cursor" size=${12} />鼠标移到便利贴上：右上角可以单独贴到桌面、换颜色；按住顶边拖出窗口，就变成一张独立的桌面便利贴</p>
     ${pick && html`<${NotePicker} s=${s} onClose=${() => setPick(false)} />`}
   </div>`;
 }

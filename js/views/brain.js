@@ -138,13 +138,8 @@ export default function Brain() {
   const gDoing = doingOf(s); const isDoing = !!gDoing && list.includes(gDoing);
   const doing = isDoing ? gDoing : next; const rest = list.filter((t) => t !== doing);
   // 顶上一句话，只说数量，不下「过载」之类的判断
-  const tip = (() => {
-    if (by.alarm.length) return `「压力」里有 ${by.alarm.length} 件，挑一件拆出最小的第一步？`;
-    const counts = REGIONS.map((r) => [r, by[r.id].length]).filter(([, n]) => n);
-    if (!counts.length) return inbox.length ? '还有事没分到脑区，在下面分一分。' : '这里很清爽。';
-    const [top, n] = counts.reduce((a, b) => (b[1] > a[1] ? b : a));
-    return counts.length === 1 ? `今天的事都在「${top.label}」。` : `今天「${top.label}」的事最多（${n} 件）${n >= 4 ? '，中间穿插点别的类型会轻松一些' : ''}。`;
-  })();
+  // 只在有用的时候说一句：「压力」里有事就提醒拆第一步；别的情况不写废话
+  const tip = by.alarm.length ? `「压力」里有 ${by.alarm.length} 件，挑一件拆出最小的第一步？` : '';
 
   return html`<div class="brain">
     <div class="page-h">
@@ -159,7 +154,7 @@ export default function Brain() {
           <span class="bk-ic"><${Icon} name=${r.icon} size=${14} /></span><span class="bk-t"><b>${r.label}</b><small>${r.name}</small></span>${d ? html`<em title="今天做完的">✓${d}</em>` : ''}<span class="bk-n">${n || ''}</span>
           ${fx[r.id] && fx[r.id].startsWith('done') && html`<span class="br-plus" key=${fx[r.id]}>✓</span>`}
         </button>`; })}</div>
-        <div class="br-tip"><span>${tip}</span>${aiOn && html`<button type="button" class="br-ai" disabled=${!!aiBusy} onClick=${() => runAi(false)} title="没手动指定过的待办，让汤圆按意思重新分一遍（自己改过的不动）"><${Icon} name="sparkle" size=${12} />${aiBusy === 'all' ? '汤圆在分…' : '让汤圆分一遍'}</button>`}</div>
+        ${(tip || aiOn) && html`<div class="br-tip"><span>${tip}</span>${aiOn && html`<button type="button" class="br-ai" disabled=${!!aiBusy} onClick=${() => runAi(false)} title="没手动指定过的待办，让汤圆按意思重新分一遍（自己改过的不动）"><${Icon} name="sparkle" size=${12} />${aiBusy === 'all' ? '汤圆在分…' : '让汤圆分一遍'}</button>`}</div>`}
       <//>
       <${Card} class="br-work" style=${`--c:${cur.color};--rbg:${cur.bg}`}>
         <div class="card-h"><h3><span class="bk-ic" style=${`--c:${cur.color}`}><${Icon} name=${cur.icon} size=${15} /></span>${cur.label} <span class="muted small">${cur.name} · ${list.length} 件${doneHere ? ` · 做完 ${doneHere}` : ''}</span></h3></div>
