@@ -5653,3 +5653,35 @@ html[data-theme="dark"] .br-in-acts button:hover{background:color-mix(in srgb,va
 .brain .br-work{min-height:0}
 .brain .br-work .quickadd{margin-top:14px}
 @media(max-width:900px){.brain .br-map{display:flex;justify-content:center}.brain .br-map svg,.brain .br-map img,.brain .br-map canvas{max-height:180px;width:auto;max-width:100%}}
+/* 桌面汤圆：头顶这一格按内容长高（两行的话不会被窗口裁掉）；跟着鼠标的 3D 倾斜；换姿势淡入淡出 */
+.pet-top{height:auto!important;min-height:36px}
+.pet-doll-w{transform:perspective(520px) rotateY(var(--ry,0deg)) rotateX(var(--rx,0deg)) rotate(var(--tilt,0deg));transition:transform .35s cubic-bezier(.2,.75,.25,1)}
+.pet-doll img{transition:opacity .16s ease-out}
+/* 便签「今天」：更紧凑、层级更清楚 —— 计时一行、日期做标题、焦点不再用蓝字、到期待办的时间放在右边同一行 */
+.sk-pane.today{gap:10px}
+.now-card{gap:8px;padding:10px 10px 10px 14px;border-radius:12px}
+.now-card .nc-row{align-items:center;gap:10px}
+.now-card .nc-time{font-size:1.375rem;letter-spacing:-.02em}
+.now-card.paused .nc-time{color:var(--text-3)}
+.nc-tx{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px;line-height:1.25}
+.nc-tx .nc-k{font-size:.6875rem;letter-spacing:.02em}
+.nc-tx .nc-t{font-size:.8125rem}
+.now-card .nc-acts{margin:0;gap:4px;flex:none}
+.now-card .nc-acts button{width:28px;height:28px;padding:0;justify-content:center;border-radius:50%}
+.now-card.paused .nc-bar i{background:var(--text-4)}
+.sk-sub{padding:2px 2px 0}
+.sk-sub .sk-date{font-size:.875rem;font-weight:650;color:var(--text)}
+.sk-sub .sk-seg{margin-left:auto}
+.sk-todos .tg-h,.sk-todos .tg-h.today,html[data-skin] .sk-todos .tg-h.today{color:var(--text-3);font-size:.6875rem;margin:4px 4px 2px}
+.sk-todos .tg-h span{margin-left:auto;font-weight:500}
+.sk-todos .fd-add input{height:30px;font-size:.8125rem;background:transparent;box-shadow:inset 0 0 0 1px var(--line)}
+.sk-todos .fd-add input:focus{box-shadow:inset 0 0 0 1px var(--blue)}
+.sk-todos .tlist .todo{padding-top:5px;padding-bottom:5px}
+.sk-todos .tlist .todo .tt{display:flex;align-items:baseline;gap:8px;min-width:0}
+.sk-todos .tlist .todo .ti{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.8125rem}
+.sk-todos .tlist .todo .meta{flex:none;margin:0;font-size:.6875rem}
+.sk-todos .tlist .todo{align-items:center}
+.sk-todos .tlist .todo .cb{margin-top:0}
+.sk-todos .tlist .todo .acts{position:absolute;right:2px;top:50%;transform:translateY(-50%);background:var(--bg)}
+.sk-todos .tlist .todo .acts .ibtn{width:24px;height:24px}
+.sk-todos .fd-add>button,.sk-todos .fd-add .ibtn{width:30px;height:30px;min-height:0;flex:none}

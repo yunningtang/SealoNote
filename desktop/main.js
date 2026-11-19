@@ -241,9 +241,9 @@ function createPet() {
   pet.setAlwaysOnTop(true, 'floating'); pet.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: false });
   // 不再用「点击穿透」：Windows 上它要装一个全局鼠标钩子，主进程一忙整台电脑的鼠标都会卡。改成窗口只有汤圆那么大（网页量好尺寸告诉这里）
   guard(pet);
-  pet.once('ready-to-show', () => { pet.webContents.setZoomFactor(petScale()); pet.showInactive(); sendPetState(); });
+  pet.once('ready-to-show', () => { pet.webContents.setZoomFactor(petScale()); pet.showInactive(); sendPetState(); startCursorFeed(); });
   pet.on('close', (e) => { if (!quitting) { e.preventDefault(); hidePet(); } });
-  pet.on('closed', () => { pet = null; sendPetState(); });
+  pet.on('closed', () => { pet = null; sendPetState(); clearInterval(curT); curT = null; });
   load(pet, '#/pet');
   startKeys();
 }
@@ -283,6 +283,12 @@ function petDragEnd() {
       hidePet(); main.webContents.send('seal:landed', { x: Math.round(cx - m.x), y: Math.round(cy - m.y) }); main.focus(); return;
     }
   }
+  // 贴边：松手时离屏幕边（任务栏上沿 / 左右边）不到 36 像素，就贴过去
+  { const b = pet.getBounds(); const wa = screen.getDisplayMatching(b).workArea; const SN = 36; let nx = b.x, ny = b.y;
+    if (wa.y + wa.height - (b.y + b.height) < SN) ny = wa.y + wa.height - b.height;
+    if (b.x - wa.x < SN) nx = wa.x; else if (wa.x + wa.width - (b.x + b.width) < SN) nx = wa.x + wa.width - b.width;
+    if (b.y - wa.y < SN) ny = wa.y;
+    if (nx !== b.x || ny !== b.y) pet.setPosition(nx, ny); }
   const [x, y] = pet.getPosition(); cfg.pet = { x, y }; saveCfg(); keepPetOnScreen();
 }
 // 主窗口里的汤圆被拖出窗口：在松手的地方变成桌面汤圆（脚下那一点对准指针）
@@ -302,6 +308,16 @@ function setPetScale(k) {
 // 同一时间只有一只汤圆：桌面汤圆出来了，主窗口里那只就藏起来；收回去了再出来（主窗口听 pet:state）
 const petVisible = () => !!(pet && !pet.isDestroyed() && pet.isVisible());
 function sendPetState() { const v = petVisible() || (!!pet && !pet.isDestroyed() && cfg.petOn !== false); if (main && !main.isDestroyed()) main.webContents.send('pet:state', { visible: v }); }
+// 汤圆看鼠标：每 0.12 秒看一眼指针在哪（只在汤圆露着、指针动了的时候才发），汤圆就会转头看过去
+let curT = null, lastCur = '';
+function startCursorFeed() {
+  if (curT) return;
+  curT = setInterval(() => {
+    if (!petVisible() || dragT) return;
+    const p = screen.getCursorScreenPoint(); const k = p.x + ',' + p.y; if (k === lastCur) return; lastCur = k;
+    const b = pet.getBounds(); pet.webContents.send('pet:cursor', { dx: Math.round(p.x - (b.x + b.width / 2)), dy: Math.round(p.y - (b.y + b.height * 0.62)) });
+  }, 120);
+}
 function showPet() { cfg.petOn = true; saveCfg(); if (!pet || pet.isDestroyed()) createPet(); else pet.showInactive(); refreshTray(); sendPetState(); }
 function hidePet() { if (pet && !pet.isDestroyed()) pet.hide(); cfg.petOn = false; saveCfg(); refreshTray(); sendPetState(); }
 

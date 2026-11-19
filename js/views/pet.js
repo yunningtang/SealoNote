@@ -114,7 +114,7 @@ function dress(THREE, m, look) {
 }
 
 // 「定格画」：用 3D 模型拍几张姿势，拍完立刻释放 3D（同一时间只拍一组，拍过的记住）
-const framesCache = new Map(); let snapQ = Promise.resolve(null); const FRAME_V = 2;
+const framesCache = new Map(); let snapQ = Promise.resolve(null); const FRAME_V = 3;
 export const FALLBACK = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120"><path d="M16 96 C12 64 32 34 60 34 C88 34 108 64 104 96 C102 108 84 112 60 112 C36 112 18 108 16 96 Z" fill="#eef0f3" stroke="#d3d2cd" stroke-width="1.5"/><circle cx="44" cy="72" r="5" fill="#1f1e1c"/><circle cx="76" cy="72" r="5" fill="#1f1e1c"/></svg>');
 export function snapFrames(look) {
   const key = JSON.stringify(look); if (framesCache.has(key)) return Promise.resolve(framesCache.get(key));
@@ -134,6 +134,8 @@ export function snapFrames(look) {
       base(); shot('idle');
       base(); m.eyes.forEach((e) => { e.scale.y = .08; }); shot('blink');
       for (const [name, sd] of [['left', -1], ['right', 1]]) { base(); m.rig.position.y = .05; m.headPiv.rotation.z = sd * .08; m.tailPiv.rotation.y = sd * .15; m.flips.forEach(({ piv, sx }) => { piv.rotation.z = sx * -.22 + (sx === sd ? sx * .9 : 0); }); shot(name); }
+      // 转头看左 / 看右：整只汤圆绕竖轴转一点，头跟着歪一下（真的 3D 角度，不是平移）
+      for (const [name, sd] of [['lookL', -1], ['lookR', 1]]) { base(); m.seal.rotation.y = sd * .5; m.headPiv.rotation.z = -sd * .07; shot(name); m.seal.rotation.y = 0; }
       let x0 = 1e9, y0 = 1e9, x1 = -1, y1 = -1;
       for (const c of Object.values(shots)) { const { data, width: w, height: h } = c.getContext('2d').getImageData(0, 0, c.width, c.height); for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (data[(y * w + x) * 4 + 3] > 10) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; } }
       if (x1 < 0) { x0 = y0 = 0; x1 = cv.width - 1; y1 = cv.height - 1; }
@@ -163,6 +165,22 @@ export default function Pet({ preview = false, bare = false }) {
   useEffect(() => { let dead = false; snapFrames(look).then((f) => { if (!dead && f) setFrames(f); }); return () => { dead = true; }; }, [lookKey]);
   const [pose, setPose] = useState('idle'); const poseT = useRef(0); const side = useRef(1);
   useEffect(() => { let t; const blink = () => { t = setTimeout(() => { if (!poseT.current) { setPose('blink'); setTimeout(() => setPose((p) => (p === 'blink' ? 'idle' : p)), 140); } blink(); }, 2600 + Math.random() * 3800); }; blink(); return () => clearTimeout(t); }, []);
+  // 看鼠标：指针在左边很远 → 转头看左；右边 → 看右；近的时候只跟着微微倾斜（3D）。4 秒不动就转回来看前面
+  const [gaze, setGaze] = useState(''); const dollW = useRef(); const lookT = useRef(0);
+  useEffect(() => {
+    if (preview || bare) return;
+    const feel = ({ dx, dy }) => {
+      const k = dx < -110 ? 'lookL' : dx > 110 ? 'lookR' : ''; setGaze((o) => (o === k ? o : k));
+      const el = dollW.current; if (el) { el.style.setProperty('--ry', Math.max(-12, Math.min(12, dx / 25)) + 'deg'); el.style.setProperty('--rx', Math.max(-7, Math.min(7, -dy / 40)) + 'deg'); }
+      clearTimeout(lookT.current); lookT.current = setTimeout(() => { setGaze(''); const e2 = dollW.current; if (e2) { e2.style.setProperty('--ry', '0deg'); e2.style.setProperty('--rx', '0deg'); } }, 4000);
+    };
+    let off;
+    if (desk && desk.onCursor) off = desk.onCursor(feel);
+    else { const h = (e) => { const el = dollW.current; if (!el) return; const r = el.getBoundingClientRect(); feel({ dx: e.clientX - (r.left + r.width / 2), dy: e.clientY - (r.top + r.height * .6) }); }; window.addEventListener('mousemove', h, { passive: true }); off = () => window.removeEventListener('mousemove', h); }
+    return () => { off && off(); clearTimeout(lookT.current); };
+  }, []);
+  // 显示哪一张：拍鳍 / 眨眼优先；转头的时候不眨眼（正脸闭眼会突然转回来）
+  const shown = pose === 'idle' || pose === 'blink' ? (gaze && frames && frames[gaze] ? gaze : pose) : pose;
   const flap = () => { side.current = -side.current; setPose(side.current > 0 ? 'right' : 'left'); clearTimeout(poseT.current); poseT.current = setTimeout(() => { poseT.current = 0; setPose('idle'); }, 120); };
   const [tilt, setTilt] = useState(0); const [hop, setHop] = useState(0);
 
@@ -250,8 +268,8 @@ export default function Pet({ preview = false, bare = false }) {
   // 第一次见面：告诉你可以怎么玩（只说一次）
   useEffect(() => { if (preview || bare || !frames || (() => { try { return JSON.parse(localStorage.getItem('ytos.pet.intro')); } catch { return false; } })()) return; lsSet('ytos.pet.intro', true); const t = setTimeout(() => say('点我看下一件事，拖我换地方\n往上一甩就打开便签', 8000), 600); return () => clearTimeout(t); }, [!!frames]);
   const pomoOn = st.phase !== 'idle'; const remain = pomoOn ? pomo.remaining() : 0; const total = (st.phase === 'break' ? st.breakLen : st.workLen) * 60; const frac = total ? Math.min(1, Math.max(0, 1 - remain / total)) : 0; const C = 2 * Math.PI * 9;
-  const doll = html`<div class="pet-doll-w" style=${`transform:rotate(${tilt}deg)`}><div key=${hop} class=${'pet-doll' + (hop ? ' hop' : '')} style=${frames && frames.w ? `width:${frames.w}px;height:${frames.h}px;aspect-ratio:${frames.w}/${frames.h}` : 'width:150px;height:110px;aspect-ratio:150/110'}>
-    ${frames ? ['idle', 'blink', 'left', 'right'].map((k) => html`<img key=${k} src=${frames[k]} class=${pose === k ? 'on' : ''} alt="" draggable="false" />`) : html`<img src=${FALLBACK} class="on" alt="" draggable="false" />`}
+  const doll = html`<div class="pet-doll-w" ref=${dollW} style=${`--tilt:${tilt}deg`}><div key=${hop} class=${'pet-doll' + (hop ? ' hop' : '')} style=${frames && frames.w ? `width:${frames.w}px;height:${frames.h}px;aspect-ratio:${frames.w}/${frames.h}` : 'width:150px;height:110px;aspect-ratio:150/110'}>
+    ${frames ? ['idle', 'blink', 'left', 'right', 'lookL', 'lookR'].filter((k) => frames[k]).map((k) => html`<img key=${k} src=${frames[k]} class=${shown === k ? 'on' : ''} alt="" draggable="false" />`) : html`<img src=${FALLBACK} class="on" alt="" draggable="false" />`}
   </div></div>`;
   if (bare) return doll;
   if (preview) return html`<div class="pet preview"><div class="pet-bubble">${msg || '在下面给我换装吧'}</div><div class="pet-stage">${doll}</div></div>`;

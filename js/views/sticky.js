@@ -77,14 +77,14 @@ export function TodayPane({ s, now }) {
   return html`<div class="sk-pane today">
     ${day === 'today' && html`<${NowCard} />`}
     <div class="sk-sub">
+      <span class="sk-date">${mdLabel(new Date(date.replace(/-/g, '/')), true)}</span>
       <div class="sk-seg sm">
         <button type="button" class=${day === 'today' ? 'on' : ''} onClick=${() => setDay('today')}>今天</button>
         <button type="button" class=${day === 'tmr' ? 'on' : ''} onClick=${() => setDay('tmr')}>明天</button>
       </div>
-      <span class="sk-date">${mdLabel(new Date(date.replace(/-/g, '/')), true)}</span>
     </div>
     <div class="todo-card sk-todos">
-      <div class="tg-h today">焦点</div>
+      <div class="tg-h">焦点<span>最多 3 件</span></div>
       <${FocusCol} key=${date} s=${s} date=${date} label=${day === 'today' ? '今天' : '明天'} sub="" main=${day === 'today'} bare />
       ${rest.length > 0 && html`<div class="tg-h">${day === 'today' ? '今天到期' : '明天到期'}<span>${rest.length}</span></div><div class="tlist">${rest.slice(0, 8).map((t) => html`<${TodoItem} key=${t.id} t=${t} compact onEdit=${openTodo} />`)}</div>`}
       ${rest.length > 8 && html`<button type="button" class="sk-more" onClick=${() => openMain('todos')}>还有 ${rest.length - 8} 件<${Icon} name="right" size=${11} /></button>`}
@@ -113,15 +113,19 @@ export function NowCard() {
   if (st.phase === 'idle' && !st.review) return null;
   if (st.phase === 'idle') return html`<div class="now-card rv"><div class="nc-k">这一轮结束了</div><div class="nc-t">${st.review.label || '专注'} · ${st.review.mins} 分钟</div><div class="nc-acts"><button type="button" class="nc-main" onClick=${() => openMain('focus')}>记一下做到哪了</button><button type="button" onClick=${() => pomo.dismissReview()}>不记了</button></div></div>`;
   const rem = pomo.remaining(); const total = (st.phase === 'break' ? st.breakLen : st.workLen) * 60; const pct = total ? Math.min(100, Math.max(0, 100 - (rem / total) * 100)) : 0;
+  // 一行：大号剩余时间 + 状态/名字 + 三个圆图标按钮；底下一条细进度。比原来矮一半，不抢下面待办的位置
+  const brk = st.phase === 'break';
   return html`<div class=${'now-card ' + st.phase + (st.paused ? ' paused' : '')}>
-    <div class="nc-k">${st.phase === 'break' ? '休息' : st.paused ? '暂停中' : '正在做'}</div>
-    <div class="nc-row"><b class="nc-time">${pomo.fmt(rem)}</b><span class="nc-t">${st.phase === 'break' ? '起来走走，喝口水' : st.label || '专注'}</span></div>
-    <i class="nc-bar"><i style=${`width:${pct}%`}></i></i>
-    <div class="nc-acts">
-      ${st.phase === 'work' && html`<button type="button" class="nc-main" onClick=${() => (st.paused ? pomo.resume() : pomo.pause())}><${Icon} name=${st.paused ? 'play' : 'pause'} size=${11} />${st.paused ? '继续' : '暂停'}</button>`}
-      ${st.phase === 'work' && html`<button type="button" onClick=${() => pomo.stop(true)}><${Icon} name="check" size=${11} />这轮到这</button>`}
-      <button type="button" onClick=${() => (st.phase === 'break' ? pomo.skip() : pomo.stop(false))}>${st.phase === 'break' ? '跳过休息' : '放弃'}</button>
+    <div class="nc-row">
+      <b class="nc-time">${pomo.fmt(rem)}</b>
+      <div class="nc-tx"><span class="nc-k">${brk ? '休息' : st.paused ? '暂停中' : '正在做'}</span><span class="nc-t">${brk ? '起来走走，喝口水' : st.label || '专注'}</span></div>
+      <div class="nc-acts">
+        ${!brk && html`<button type="button" class="nc-main" title=${st.paused ? '继续' : '暂停'} aria-label=${st.paused ? '继续' : '暂停'} onClick=${() => (st.paused ? pomo.resume() : pomo.pause())}><${Icon} name=${st.paused ? 'play' : 'pause'} size=${12} /></button>`}
+        ${!brk && html`<button type="button" title="这轮到这（记下来）" aria-label="这轮到这" onClick=${() => pomo.stop(true)}><${Icon} name="check" size=${12} /></button>`}
+        <button type="button" title=${brk ? '跳过休息' : '放弃这一轮'} aria-label=${brk ? '跳过休息' : '放弃'} onClick=${() => (brk ? pomo.skip() : pomo.stop(false))}><${Icon} name=${brk ? 'right' : 'x'} size=${12} /></button>
+      </div>
     </div>
+    <i class="nc-bar"><i style=${`width:${pct}%`}></i></i>
   </div>`;
 }
 export function PomoPill({ onOpen }) {
