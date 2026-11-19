@@ -5791,3 +5791,15 @@ html[data-theme="dark"] .now-card .nc-acts .nc-main:hover{background:#48484d}
 html[data-theme="dark"] .nv.stk .sk-op2{background:rgba(0,0,0,.25)}
 .sk-stks .stk-grid{display:flex;flex-direction:column;gap:10px}
 .skin-tip:empty{display:none}
+/* 桌面汤圆的计时：专注是蓝色（不要红 / 橙），休息是绿色，暂停是灰 */
+.pet-timer .fg{stroke:#3d7fe0}
+.pet-timer.work{background:#f2f7ff;box-shadow:0 0 0 1px rgba(61,127,224,.22),0 6px 16px -8px rgba(0,0,0,.28)}
+.pet-timer.work small{color:#2f6cc7}
+.pet-timer.paused .fg{stroke:#b5b4af}
+.pet-timer.work.paused{background:#f6f6f4;box-shadow:0 0 0 1px rgba(0,0,0,.08),0 6px 16px -8px rgba(0,0,0,.28)}
+.pet-timer.paused small{color:var(--pet-mute)}
+html[data-theme="dark"] .pet-timer.work{background:#1f2a3a;box-shadow:0 0 0 1px rgba(110,160,240,.3)}
+html[data-theme="dark"] .pet-timer.work small{color:#8fb6f2}
+html[data-theme="dark"] .pet-timer.break{background:#1e2e25}
+html[data-theme="dark"] .pet-timer.work.paused{background:#2a2a2d;box-shadow:0 0 0 1px rgba(255,255,255,.09)}
+html[data-theme="dark"] .pet-timer .tr{stroke:#444448}

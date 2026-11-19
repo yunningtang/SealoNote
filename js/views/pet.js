@@ -114,7 +114,7 @@ function dress(THREE, m, look) {
 }
 
 // 「定格画」：用 3D 模型拍几张姿势，拍完立刻释放 3D（同一时间只拍一组，拍过的记住）
-const framesCache = new Map(); let snapQ = Promise.resolve(null); const FRAME_V = 4;
+const framesCache = new Map(); let snapQ = Promise.resolve(null); const FRAME_V = 5;
 export const FALLBACK = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120"><path d="M16 96 C12 64 32 34 60 34 C88 34 108 64 104 96 C102 108 84 112 60 112 C36 112 18 108 16 96 Z" fill="#eef0f3" stroke="#d3d2cd" stroke-width="1.5"/><circle cx="44" cy="72" r="5" fill="#1f1e1c"/><circle cx="76" cy="72" r="5" fill="#1f1e1c"/></svg>');
 export function snapFrames(look) {
   const key = JSON.stringify(look); if (framesCache.has(key)) return Promise.resolve(framesCache.get(key));
@@ -143,6 +143,9 @@ export function snapFrames(look) {
       const pad = Math.round(4 * pr); x0 = Math.max(0, x0 - pad); y0 = Math.max(0, y0 - pad); x1 = Math.min(cv.width - 1, x1 + pad); y1 = Math.min(cv.height - 1, y1 + pad);
       const cw = x1 - x0 + 1, ch = y1 - y0 + 1; const f = { w: Math.round(cw / pr), h: Math.round(ch / pr) };
       for (const [name, c] of Object.entries(shots)) { const o = document.createElement('canvas'); o.width = cw; o.height = ch; o.getContext('2d').drawImage(c, x0, y0, cw, ch, 0, 0, cw, ch); f[name] = o.toDataURL('image/png'); }
+      // 转头的那两张：身体会往一边偏。记下每张身体中心离正脸那张差多少，显示时挪回来——头顶的计时 / 气泡就一直对着身体正中
+      const midX = (c) => { const { data, width: w, height: h } = c.getContext('2d').getImageData(0, 0, c.width, c.height); let a = 1e9, b = -1; for (let y = Math.floor(h * .35); y < h; y++) for (let x = 0; x < w; x++) if (data[(y * w + x) * 4 + 3] > 120) { if (x < a) a = x; if (x > b) b = x; } return b < 0 ? w / 2 : (a + b) / 2; };
+      const m0 = midX(shots.idle); f.dx = {}; for (const [name, c] of Object.entries(shots)) f.dx[name] = Math.round(((m0 - midX(c)) / pr) * 10) / 10;
       framesCache.set(key, f); try { localStorage.setItem('ytos.pet.frames', JSON.stringify({ v: FRAME_V, key, f })); } catch {} return f;
     } finally { try { m.dispose(); m.renderer.forceContextLoss(); } catch {} }
   });
@@ -324,7 +327,7 @@ export default function Pet({ preview = false, bare = false }) {
   useEffect(() => { if (preview || bare || !frames || (() => { try { return JSON.parse(localStorage.getItem('ytos.pet.intro')); } catch { return false; } })()) return; lsSet('ytos.pet.intro', true); const t = setTimeout(() => say('点我看下一件事，拖我换地方\n往上一甩就打开便签', 8000), 600); return () => clearTimeout(t); }, [!!frames]);
   const pomoOn = st.phase !== 'idle'; const remain = pomoOn ? pomo.remaining() : 0; const total = (st.phase === 'break' ? st.breakLen : st.workLen) * 60; const frac = total ? Math.min(1, Math.max(0, 1 - remain / total)) : 0; const C = 2 * Math.PI * 9;
   const doll = html`<div class="pet-doll-w" ref=${dollW} style=${`--tilt:${tilt}deg`}><div key=${hop} class=${'pet-doll' + (hop ? ' hop' : '') + (fade ? ' fade' : '')} style=${frames && frames.w ? `width:${frames.w}px;height:${frames.h}px;aspect-ratio:${frames.w}/${frames.h}` : 'width:150px;height:110px;aspect-ratio:150/110'}><div class="pet-sq" ref=${sq}>
-    ${frames ? ['idle', 'blink', 'left', 'right', 'lookL', 'lookR'].filter((k) => frames[k]).map((k) => html`<img key=${k} src=${frames[k]} class=${shown === k ? 'on' : ''} alt="" draggable="false" />`) : html`<img src=${FALLBACK} class="on" alt="" draggable="false" />`}
+    ${frames ? ['idle', 'blink', 'left', 'right', 'lookL', 'lookR'].filter((k) => frames[k]).map((k) => html`<img key=${k} src=${frames[k]} class=${shown === k ? 'on' : ''} style=${frames.dx && frames.dx[k] ? `transform:translateX(${frames.dx[k]}px)` : ''} alt="" draggable="false" />`) : html`<img src=${FALLBACK} class="on" alt="" draggable="false" />`}
   </div></div></div>`;
   if (bare) return doll;
   if (preview) return html`<div class="pet preview"><div class="pet-bubble">${msg || '在下面给我换装吧'}</div><div class="pet-stage">${doll}</div></div>`;
