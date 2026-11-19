@@ -5685,3 +5685,7 @@ html[data-theme="dark"] .br-in-acts button:hover{background:color-mix(in srgb,va
 .sk-todos .tlist .todo .acts{position:absolute;right:2px;top:50%;transform:translateY(-50%);background:var(--bg)}
 .sk-todos .tlist .todo .acts .ibtn{width:24px;height:24px}
 .sk-todos .fd-add>button,.sk-todos .fd-add .ibtn{width:30px;height:30px;min-height:0;flex:none}
+/* 桌面汤圆贴着屏幕边时，气泡往屏幕里挪；小尖角还对着汤圆 */
+.pet-bubble::after{left:calc(50% + var(--ax,0px))}
+.pet-count{position:relative;top:var(--cy,0px)}
+.pet-bar{position:relative}

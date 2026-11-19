@@ -215,6 +215,47 @@ export default function Pet({ preview = false, bare = false }) {
     const ro = new ResizeObserver(() => { cancelAnimationFrame(t); t = requestAnimationFrame(() => { const r = box.current.getBoundingClientRect(); desk.fit(Math.ceil(r.width), Math.ceil(r.height)); }); });
     ro.observe(box.current); return () => { ro.disconnect(); cancelAnimationFrame(t); };
   }, []);
+  // ---- 汤圆身体在窗口里的哪一块（不算透明边、气泡、影子）：桌面版贴边时按身体贴，爪子 / 身子直接碰到屏幕边，不留缝
+  const bodyBox = useRef(null);
+  const sendBody = () => {
+    if (!desk || !desk.body || !box.current || !bodyBox.current) return;
+    const img = box.current.querySelector('.pet-doll img'); if (!img) return;
+    const B = box.current.getBoundingClientRect(), r = img.getBoundingClientRect(), f = bodyBox.current;
+    desk.body({ l: Math.round(r.left - B.left + f.l * r.width), t: Math.round(r.top - B.top + f.t * r.height), r: Math.round(r.left - B.left + f.r * r.width), b: Math.round(r.top - B.top + f.b * r.height) });
+  };
+  useEffect(() => {
+    if (!desk || !desk.body || !frames || !frames.idle) return; let dead = false;
+    const im = new Image(); im.onload = () => {
+      if (dead) return; const W = im.naturalWidth, H = im.naturalHeight; const c = document.createElement('canvas'); c.width = W; c.height = H;
+      const g = c.getContext('2d'); g.drawImage(im, 0, 0); const d = g.getImageData(0, 0, W, H).data;
+      // 不透明度 > 120 才算身体：软软的地面影子不算
+      let x0 = W, y0 = H, x1 = -1, y1 = -1;
+      for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (d[(y * W + x) * 4 + 3] > 120) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+      if (x1 < 0) return; bodyBox.current = { l: x0 / W, t: y0 / H, r: (x1 + 1) / W, b: (y1 + 1) / H }; sendBody();
+    };
+    im.src = frames.idle; return () => { dead = true; };
+  }, [frames]);
+  // 贴着屏幕边：气泡往屏幕里挪（伸出去多少挪多少，最多挪到气泡一半宽）
+  // 贴着屏幕边：顶上的按钮条和气泡只挪「刚好不出屏幕」那么多（按它们自己的宽度算），气泡的小尖角还对着汤圆
+  const offRef = useRef({ l: 0, r: 0 });
+  const fitInside = () => {
+    const el = box.current; if (!el) return; const B = el.getBoundingClientRect(), o = offRef.current;
+    for (const x of el.querySelectorAll('.pet-bar,.pet-bubble')) {
+      x.style.left = '0px'; const r = x.getBoundingClientRect(); const lo = B.left + o.l + 4, hi = B.right - o.r - 4; let dx = 0;
+      if (r.right - r.left <= hi - lo) { if (r.left < lo) dx = lo - r.left; else if (r.right > hi) dx = hi - r.right; }
+      x.style.left = Math.round(dx) + 'px'; x.style.setProperty('--ax', Math.round(-dx) + 'px');
+    }
+  };
+  useEffect(() => { if (offRef.current.l || offRef.current.r) fitInside(); });
+  // 贴着任务栏：下面的「今天 N 下」会落到屏幕外，挪到头顶上（悬停时顶上是按钮条，那时就不显示计数）
+  const [lowEdge, setLowEdge] = useState(false);
+  useEffect(() => { if (!desk || !desk.onOff) return; return desk.onOff(({ l, r, b }) => {
+    const el = box.current; if (!el) return; offRef.current = { l: l || 0, r: r || 0 }; fitInside();
+    const pill = el.querySelector('.pet-count'), img = el.querySelector('.pet-doll img'), f = bodyBox.current; let cy = 0;
+    if (b > 0 && pill && img && f) { const p = pill.getBoundingClientRect(), ir = img.getBoundingClientRect(); cy = Math.round(ir.top + f.t * ir.height - 6 - p.bottom); }
+    el.style.setProperty('--cy', cy + 'px'); setLowEdge(cy < 0);
+  }); }, []);
+  useEffect(() => { if (!desk || !desk.body || !box.current) return; const ro = new ResizeObserver(() => requestAnimationFrame(sendBody)); ro.observe(box.current); return () => ro.disconnect(); }, []);
 
   // ---- 每台电脑自己记：大小、固定位置、房间
   const ls = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch { return d; } };
@@ -314,6 +355,6 @@ export default function Pet({ preview = false, bare = false }) {
     </div>`}
     <div class="pet-top">${top}</div>
     <div class="pet-stage">${doll}</div>
-    ${desk && html`<div class=${'pet-count' + (typing || hover ? ' on' : '')} title="只数按了几下，不记录按了什么">${keys.running || keys.today ? html`今天 <b>${(keys.today || 0).toLocaleString()}</b> 下` : keys.needsPermission ? '点「更多」开启打字计数' : ''}</div>`}
+    ${desk && html`<div class=${'pet-count' + ((lowEdge ? typing && !hover : typing || hover) ? ' on' : '')} title="只数按了几下，不记录按了什么">${keys.running || keys.today ? html`今天 <b>${(keys.today || 0).toLocaleString()}</b> 下` : keys.needsPermission ? '点「更多」开启打字计数' : ''}</div>`}
   </div>`;
 }

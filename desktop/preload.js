@@ -3,7 +3,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('sealonote', {
   desktop: true,
-  version: 10,
+  version: 11,
   platform: process.platform,
   // 网页自己画的最小化 / 最大化 / 关闭
   win: {
@@ -31,6 +31,7 @@ contextBridge.exposeInMainWorld('sealonote', {
     show: () => ipcRenderer.invoke('pet:show'),
     hide: () => ipcRenderer.invoke('pet:hide'),
     state: () => ipcRenderer.invoke('pet:state'),
+    onOff: (cb) => { const h = (_e, v) => cb(v); ipcRenderer.on('pet:off', h); return () => ipcRenderer.removeListener('pet:off', h); },
     onCursor: (cb) => { const h = (_e, v) => cb(v); ipcRenderer.on('pet:cursor', h); return () => ipcRenderer.removeListener('pet:cursor', h); },
     onState: (cb) => { const h = (_e, v) => cb(v); ipcRenderer.on('pet:state', h); return () => ipcRenderer.removeListener('pet:state', h); },
     outAt: (x, y) => ipcRenderer.invoke('pet:outAt', Math.round(Number(x) || 0), Math.round(Number(y) || 0)),
@@ -42,6 +43,7 @@ contextBridge.exposeInMainWorld('sealonote', {
     setRoom: (on) => ipcRenderer.invoke('pet:setRoom', !!on),
     setHit: (hit) => ipcRenderer.send('pet:hit', !!hit),
     fit: (w, h) => ipcRenderer.send('pet:fit', Number(w), Number(h)),
+    body: (r) => ipcRenderer.send('pet:body', r),
     dragStart: (ox, oy) => ipcRenderer.send('pet:dragStart', Number(ox), Number(oy)),
     dragEnd: () => ipcRenderer.send('pet:dragEnd'),
     setCount: (on) => ipcRenderer.invoke('pet:setCount', !!on),

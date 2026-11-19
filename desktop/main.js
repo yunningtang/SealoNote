@@ -265,7 +265,8 @@ function fitPet(w, h) {
   const k = petScale(); const b = pet.getBounds(); const W = Math.round(w * k), H = Math.round(h * k);
   if (Math.abs(W - b.width) < 2 && Math.abs(H - b.height) < 2) return;
   const x = Math.round(b.x + b.width / 2 - W / 2), y = b.y + b.height - H;
-  pet.setBounds({ x, y, width: W, height: H }); cfg.pet = { x, y }; saveCfg(); keepPetOnScreen();
+  if (petBody) { const dx = (W - b.width) / 2 / k, dy = (H - b.height) / k; petBody = { l: petBody.l + dx, r: petBody.r + dx, t: petBody.t + dy, b: petBody.b + dy }; }
+  pet.setBounds({ x, y, width: W, height: H }); cfg.pet = { x, y }; saveCfg(); keepPetOnScreen(); sendPetOff();
 }
 // 拖动：按下以后由这里跟着鼠标挪窗口（每秒 60 次），不用网页每动一下发一次消息
 let dragT = null;
@@ -283,13 +284,15 @@ function petDragEnd() {
       hidePet(); main.webContents.send('seal:landed', { x: Math.round(cx - m.x), y: Math.round(cy - m.y) }); main.focus(); return;
     }
   }
-  // 贴边：松手时离屏幕边（任务栏上沿 / 左右边）不到 36 像素，就贴过去
-  { const b = pet.getBounds(); const wa = screen.getDisplayMatching(b).workArea; const SN = 36; let nx = b.x, ny = b.y;
-    if (wa.y + wa.height - (b.y + b.height) < SN) ny = wa.y + wa.height - b.height;
-    if (b.x - wa.x < SN) nx = wa.x; else if (wa.x + wa.width - (b.x + b.width) < SN) nx = wa.x + wa.width - b.width;
-    if (b.y - wa.y < SN) ny = wa.y;
+  // 贴边：松手时汤圆身体离屏幕边（任务栏上沿 / 左右边 / 上边）不到 36 像素，就让身体直接贴过去。
+  // 按身体算，不按窗口算：窗口四周有透明的边（气泡、影子、留白），按窗口贴会留一道缝
+  { const b = pet.getBounds(); const wa = screen.getDisplayMatching(b).workArea; const SN = 36; const n = bodyInset(); let nx = b.x, ny = b.y;
+    const L = b.x + n.l, R = b.x + b.width - n.r, T = b.y + n.t, Bt = b.y + b.height - n.b;
+    if (wa.y + wa.height - Bt < SN) ny = wa.y + wa.height - (b.height - n.b);
+    else if (T - wa.y < SN) ny = wa.y - n.t;
+    if (L - wa.x < SN) nx = wa.x - n.l; else if (wa.x + wa.width - R < SN) nx = wa.x + wa.width - (b.width - n.r);
     if (nx !== b.x || ny !== b.y) pet.setPosition(nx, ny); }
-  const [x, y] = pet.getPosition(); cfg.pet = { x, y }; saveCfg(); keepPetOnScreen();
+  const [x, y] = pet.getPosition(); cfg.pet = { x, y }; saveCfg(); keepPetOnScreen(); sendPetOff();
 }
 // 主窗口里的汤圆被拖出窗口：在松手的地方变成桌面汤圆（脚下那一点对准指针）
 function petOutAt(sx, sy) {
@@ -357,10 +360,26 @@ function restartKeys() { if (cfg.countKeys === false) return; stopKeys(); setTim
 function resetKeys() { try { worker && worker.postMessage('reset'); } catch {} }
 
 // 汤圆别跑到屏幕外面去：拔了外接屏、改了分辨率、拖出去、变大以后，都拉回最近的屏幕里
+// 网页告诉我们汤圆身体在窗口里的位置（网页像素）；乘上缩放就是屏幕上的。旧网页不发，就当没有透明边
+let petBody = null;
+function bodyInset() {
+  if (!pet || pet.isDestroyed() || !petBody) return { l: 0, t: 0, r: 0, b: 0 };
+  const b = pet.getBounds(), z = pet.webContents.getZoomFactor() || 1; const c = (v) => Math.max(0, Math.round(v));
+  return { l: c(petBody.l * z), t: c(petBody.t * z), r: c(b.width - petBody.r * z), b: c(b.height - petBody.b * z) };
+}
+// 窗口有一截伸出屏幕（贴边的时候）：告诉网页伸出去多少，气泡往里挪，字不会跑到屏幕外面
+let lastOff = '';
+function sendPetOff() {
+  if (!pet || pet.isDestroyed()) return;
+  const b = pet.getBounds(), wa = screen.getDisplayMatching(b).workArea, z = pet.webContents.getZoomFactor() || 1;
+  const v = { l: Math.round(Math.max(0, wa.x - b.x) / z), r: Math.round(Math.max(0, b.x + b.width - wa.x - wa.width) / z), b: Math.round(Math.max(0, b.y + b.height - wa.y - wa.height) / z) };
+  const k = v.l + ',' + v.r + ',' + v.b; if (k === lastOff) return; lastOff = k; pet.webContents.send('pet:off', v);
+}
 function keepPetOnScreen() {
   if (!pet || pet.isDestroyed()) return;
-  const b = pet.getBounds(); const wa = screen.getDisplayMatching(b).workArea;
-  const x = Math.min(Math.max(b.x, wa.x), wa.x + wa.width - b.width), y = Math.min(Math.max(b.y, wa.y), wa.y + wa.height - b.height);
+  // 身体留在屏幕里就行：透明的边可以伸出屏幕（不然贴边时会被推回来，又留一道缝）
+  const b = pet.getBounds(); const wa = screen.getDisplayMatching(b).workArea; const n = bodyInset();
+  const x = Math.min(Math.max(b.x, wa.x - n.l), wa.x + wa.width - b.width + n.r), y = Math.min(Math.max(b.y, wa.y - n.t), wa.y + wa.height - b.height + n.b);
   if (x !== b.x || y !== b.y) { pet.setPosition(x, y); cfg.pet = { x, y }; saveCfg(); }
 }
 
@@ -458,6 +477,7 @@ else {
     }));
     ipcMain.on('pet:hit', () => {}); // 0.6.3 的网页还会调；现在不穿透了
     ipcMain.on('pet:fit', (_e, w, h) => fitPet(Number(w), Number(h)));
+    ipcMain.on('pet:body', (_e, r) => { if (r && [r.l, r.t, r.r, r.b].every(Number.isFinite) && r.r > r.l && r.b > r.t) { petBody = { l: r.l, t: r.t, r: r.r, b: r.b }; sendPetOff(); } });
     ipcMain.on('pet:dragStart', (_e, ox, oy) => petDragStart(Number(ox) || 0, Number(oy) || 0));
     ipcMain.on('pet:dragEnd', () => petDragEnd());
     ipcMain.handle('pet:setCount', (_e, on) => { cfg.countKeys = !!on; saveCfg(); if (on) { if (MAC && !systemPreferences.isTrustedAccessibilityClient(true)) { keysErr = 'needs-permission'; return keyStats(); } startKeys(); } else stopKeys(); return keyStats(); });
