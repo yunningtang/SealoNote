@@ -65,7 +65,7 @@ export function Capture({ open, onClose }) {
       <textarea ref=${ref} class="cap-in" rows="2" autofocus value=${text} placeholder="随手记：写论文 @明天 14:00 !1 #研究 · 9:00-10:30 组会 · 多行就是笔记" onInput=${(e) => { setText(e.target.value); e.target.style.height = 'auto'; e.target.style.height = Math.min(220, e.target.scrollHeight) + 'px'; }} onKeyDown=${(e) => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); save(); } }}></textarea>
       <div class="cap-f">
         <div class="seg mini cap-seg">${[['todo', '待办'], ['note', '笔记'], ['block', '时间块']].map(([v, l]) => html`<button type="button" key=${v} class=${k === v ? 'on' : ''} onClick=${() => setKind(v)}>${l}</button>`)}${kind && html`<button type="button" class="cap-auto" onClick=${() => setKind(null)}>自动</button>`}</div>
-        <span class=${'cap-sum ' + (p.invalid ? 'bad' : '')}>${text.trim() ? p.summary : 'Enter 保存 · Shift+Enter 换行 · Esc 关闭'}</span>
+        <span class=${'cap-sum ' + (p.invalid ? 'bad' : '')}>${text.trim() ? p.summary : ''}</span>
         <button class="cap-ai" type="button" disabled=${!text.trim()} title="让汤圆把这句话拆成几条，预览后再保存" onClick=${() => { const t = text; onClose(); window.dispatchEvent(new CustomEvent('seal:ask', { detail: t })); }}><${Icon} name="sparkle" size=${13} /> 问汤圆</button>
         <button class="btn primary sm" disabled=${!text.trim() || p.invalid} onClick=${save}><${Icon} name="check" size=${13} /> 保存</button>
       </div>
