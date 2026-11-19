@@ -69,11 +69,12 @@ function PromptsCard({ s }) {
 }
 
 // 设置页：左边分组导航，右边一次一页（大标题 + 一行说明，下面是一组组的「名字 | 控件」）
+// 排版三条：左名字右控件、一项一行；不套卡片框，直接放在页面上；每组都有标题，组间留白大、组内紧，删除类操作放在最底下
 function Page({ title, sub, children }) {
   return html`<div class="sx-page"><header class="sx-top"><h1>${title}</h1>${sub && html`<p>${sub}</p>`}</header>${children}</div>`;
 }
 function Group({ title, children }) {
-  return html`<section class="card sx-group">${title && html`<h3>${title}</h3>`}<div class="sx-list">${children}</div></section>`;
+  return html`<section class="sx-group">${title && html`<h3>${title}</h3>`}<div class="sx-list">${children}</div></section>`;
 }
 function Row({ label, hint, stack, icon, children }) {
   return html`<div class=${'sx-row' + (stack ? ' stack' : '')}>
@@ -278,7 +279,7 @@ export default function Settings() {
       ${!connected && html`<${Group} title=${login && login.cloud ? '其他同步方式' : '同步'}>${ghRows}<//>`}
     </div>`,
     look: () => html`<${Page} title="外观" sub="颜色、主题和质感">
-      <${Group}>
+      <${Group} title="界面">
         <${Row} icon="globe" label="语言 / Language" hint="只换界面上的字，你写的内容不变"><${Seg} options=${[{ v: 'zh', label: '中文' }, { v: 'en', label: 'English' }]} value=${getLang()} onChange=${(v) => v !== getLang() && setLang(v)} /><//>
         <${Row} icon="moon" label="深浅色"><${Seg} options=${[{ v: 'auto', label: '跟随系统' }, { v: 'light', label: '浅色' }, { v: 'dark', label: '深色' }]} value=${s.settings.theme} onChange=${(v) => update((d) => { d.settings.theme = v; })} /><//>
         <${Row} icon="layers" label="主题" stack>
@@ -291,10 +292,10 @@ export default function Settings() {
       <//>
     <//>`,
     dash: () => html`<${Page} title="总览" sub="打开时先看哪一页，总览上显示哪些卡片">
-      <${Group}>
+      <${Group} title="打开">
         <${Row} icon="sun" label="打开时显示" hint="打开网页或桌面版时先进哪一页"><${Seg} value=${s.settings.startPage || 'today'} onChange=${(v) => update((d) => { d.settings.startPage = v; })} options=${[{ v: 'today', label: '今天' }, { v: 'home', label: '总览' }, { v: 'last', label: '上次看的' }]} /><//>
       <//>
-      <${Group}>
+      <${Group} title="总览上的卡片">
         ${WIDGETS.map(([id, label]) => html`<${Row} key=${id} icon=${WIDGET_ICON[id] || 'grid'} label=${label}><${Switch} label=${label} on=${!dash.hidden.includes(id)} onChange=${(v) => update((d) => { d.settings.dash = toggleWidget(d.settings.dash, id, v); })} /><//>`)}
       <//>
       <${Group} title="侧栏">
@@ -304,7 +305,7 @@ export default function Settings() {
       <//>
     <//>`,
     seal: () => html`<${Page} title="汤圆" sub="角落里的小海豹">
-      <${Group}>
+      <${Group} title="窗口里的汤圆">
         <${Row} icon="eye" label="显示汤圆"><${Switch} label="显示汤圆" on=${s.settings.seal !== false} onChange=${(v) => update((d) => { d.settings.seal = v; })} /><//>
         <${Row} icon="right" label="闲时贴边" hint="没人理时缩到屏幕边"><${Switch} label="闲时贴边" on=${s.settings.sealTuck !== false} onChange=${(v) => update((d) => { d.settings.sealTuck = v; })} /><//>
         <${Row} icon="sparkle" label="光效"><${Switch} label="光效" on=${s.settings.sealGlow !== false} onChange=${(v) => update((d) => { d.settings.sealGlow = v; })} /><//>
@@ -321,7 +322,7 @@ export default function Settings() {
       <//>
     <//>`,
     ai: () => html`<${Page} title="AI" sub=${login && login.ai ? `当前模型 ${login.aiModel || '服务器配置'}` : '汤圆用来理解你说的话'}>
-      <${Group}>
+      <${Group} title="模型">
         <${Row} icon="cloud" label="来源" hint=${ai.provider === 'deepseek' || ai.provider === 'anthropic' ? '密钥只存在这台浏览器里' : ''}><${Seg} options=${[{ v: 'server', label: '内置' }, { v: 'deepseek', label: 'DeepSeek' }, { v: 'anthropic', label: 'Claude' }, { v: 'local', label: '不用' }]} value=${ai.provider} onChange=${(v) => saveAi({ provider: v })} /><//>
         ${(ai.provider === 'deepseek' || ai.provider === 'anthropic') && html`
           <${Row} icon="key" label="密钥"><input class="sx-input" type="password" value=${ai.key} placeholder=${ai.provider === 'deepseek' ? 'sk-…' : 'sk-ant-…'} autocomplete="off" onInput=${(e) => saveAi({ key: e.target.value.trim() })} /><//>

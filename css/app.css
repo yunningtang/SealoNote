@@ -5803,3 +5803,16 @@ html[data-theme="dark"] .pet-timer.work small{color:#8fb6f2}
 html[data-theme="dark"] .pet-timer.break{background:#1e2e25}
 html[data-theme="dark"] .pet-timer.work.paused{background:#2a2a2d;box-shadow:0 0 0 1px rgba(255,255,255,.09)}
 html[data-theme="dark"] .pet-timer .tr{stroke:#444448}
+/* ===== 设置页排版：不套卡片，直接放在页面上；每组一个小标题；组间留白大、组内紧 ===== */
+.sx-page{display:flex;flex-direction:column;gap:0}
+.sx-group,html[data-skin] .sx-group{background:none!important;box-shadow:none!important;border:0!important;border-radius:0;padding:0!important;margin:0 0 40px!important;backdrop-filter:none!important}
+.sx-group:last-child{margin-bottom:0!important}
+.sx-group h3{font-size:.8125rem!important;font-weight:600;color:var(--text-3)!important;letter-spacing:.02em;padding:0 0 8px!important;margin:0!important;border-bottom:1px solid var(--line)!important}
+.sx-list>.sx-row+.sx-row,.sx-list>.sx-row+details,.sx-list>details+.sx-row{border-top:1px solid color-mix(in srgb,var(--line) 70%,transparent)}
+.sx-row{min-height:52px;padding:10px 0}
+.sx-ic{width:20px;height:20px;border-radius:0;background:none!important;box-shadow:none!important;color:var(--text-3)}
+.sx-row.stack{grid-template-columns:20px minmax(0,1fr)}
+.sx-hero,html[data-skin] .sx-hero{background:none!important;box-shadow:none!important;border:0!important;padding:0 0 28px!important;margin:0 0 8px!important;backdrop-filter:none!important}
+.sx-page>.sx-top{margin-bottom:36px!important}
+.sx-row{min-height:46px;padding:8px 0}
+.sx-row:has(.sx-l small){min-height:56px}
