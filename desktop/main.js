@@ -241,9 +241,9 @@ function createPet() {
   pet.setAlwaysOnTop(true, 'floating'); pet.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: false });
   // 不再用「点击穿透」：Windows 上它要装一个全局鼠标钩子，主进程一忙整台电脑的鼠标都会卡。改成窗口只有汤圆那么大（网页量好尺寸告诉这里）
   guard(pet);
-  pet.once('ready-to-show', () => { pet.webContents.setZoomFactor(petScale()); pet.showInactive(); });
+  pet.once('ready-to-show', () => { pet.webContents.setZoomFactor(petScale()); pet.showInactive(); sendPetState(); });
   pet.on('close', (e) => { if (!quitting) { e.preventDefault(); hidePet(); } });
-  pet.on('closed', () => { pet = null; });
+  pet.on('closed', () => { pet = null; sendPetState(); });
   load(pet, '#/pet');
   startKeys();
 }
@@ -274,7 +274,23 @@ function petDragStart(ox, oy) {
   const t0 = Date.now(); // 万一松手的消息没到（网页卡住、崩了），30 秒后自己停，不会一直跟着鼠标
   dragT = setInterval(() => { if (!pet || pet.isDestroyed() || Date.now() - t0 > 30e3) { petDragEnd(); return; } const c = screen.getCursorScreenPoint(); const [x, y] = pet.getPosition(); const nx = Math.round(c.x - ox), ny = Math.round(c.y - oy); if (nx !== x || ny !== y) pet.setPosition(nx, ny); }, 16);
 }
-function petDragEnd() { clearInterval(dragT); dragT = null; if (pet && !pet.isDestroyed()) { const [x, y] = pet.getPosition(); cfg.pet = { x, y }; saveCfg(); keepPetOnScreen(); } }
+function petDragEnd() {
+  clearInterval(dragT); dragT = null; if (!pet || pet.isDestroyed()) return;
+  // 拖到 SealoNote 主窗口上松手：汤圆回到窗口里（主窗口那只在松手的地方出现），桌面上这只收起来
+  if (main && !main.isDestroyed() && main.isVisible() && !main.isMinimized()) {
+    const b = pet.getBounds(), m = main.getContentBounds(); const cx = b.x + b.width / 2, cy = b.y + b.height * 0.7;
+    if (cx > m.x + 40 && cx < m.x + m.width - 40 && cy > m.y + 40 && cy < m.y + m.height - 20) {
+      hidePet(); main.webContents.send('seal:landed', { x: Math.round(cx - m.x), y: Math.round(cy - m.y) }); main.focus(); return;
+    }
+  }
+  const [x, y] = pet.getPosition(); cfg.pet = { x, y }; saveCfg(); keepPetOnScreen();
+}
+// 主窗口里的汤圆被拖出窗口：在松手的地方变成桌面汤圆（脚下那一点对准指针）
+function petOutAt(sx, sy) {
+  if (!pet || pet.isDestroyed()) { cfg.pet = null; createPet(); }
+  const b = pet.getBounds(); const x = Math.round(sx - b.width / 2), y = Math.round(sy - b.height * 0.8);
+  pet.setPosition(x, y); cfg.pet = { x, y }; cfg.petOn = true; saveCfg(); pet.showInactive(); keepPetOnScreen(); refreshTray(); sendPetState();
+}
 function setPetScale(k) {
   k = Math.max(.6, Math.min(1.8, Number(k) || 1)); cfg.petScale = k; saveCfg();
   if (!pet || pet.isDestroyed()) return k;
@@ -283,8 +299,11 @@ function setPetScale(k) {
   pet.setBounds({ x, y, width: w, height: h }); pet.webContents.setZoomFactor(k); cfg.pet = { x, y }; saveCfg(); keepPetOnScreen();
   return k;
 }
-function showPet() { cfg.petOn = true; saveCfg(); if (!pet || pet.isDestroyed()) createPet(); else pet.showInactive(); refreshTray(); }
-function hidePet() { if (pet && !pet.isDestroyed()) pet.hide(); cfg.petOn = false; saveCfg(); refreshTray(); }
+// 同一时间只有一只汤圆：桌面汤圆出来了，主窗口里那只就藏起来；收回去了再出来（主窗口听 pet:state）
+const petVisible = () => !!(pet && !pet.isDestroyed() && pet.isVisible());
+function sendPetState() { const v = petVisible() || (!!pet && !pet.isDestroyed() && cfg.petOn !== false); if (main && !main.isDestroyed()) main.webContents.send('pet:state', { visible: v }); }
+function showPet() { cfg.petOn = true; saveCfg(); if (!pet || pet.isDestroyed()) createPet(); else pet.showInactive(); refreshTray(); sendPetState(); }
+function hidePet() { if (pet && !pet.isDestroyed()) pet.hide(); cfg.petOn = false; saveCfg(); refreshTray(); sendPetState(); }
 
 // 数按键：只在这里加一，按的是哪个键不存、不传。按住不放（自动重复）只算一下
 const day = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
@@ -399,6 +418,8 @@ else {
     ipcMain.handle('main:open', (_e, hash) => { showMain(typeof hash === 'string' ? hash : ''); });
     ipcMain.handle('pet:show', () => { showPet(); });
     ipcMain.handle('pet:hide', () => { hidePet(); });
+    ipcMain.handle('pet:state', () => ({ visible: petVisible() || (!!pet && !pet.isDestroyed() && cfg.petOn !== false) }));
+    ipcMain.handle('pet:outAt', (_e, x, y) => { petOutAt(Number(x) || 0, Number(y) || 0); });
     ipcMain.on('pet:moveBy', (_e, dx, dy) => { if (!pet || pet.isDestroyed()) return; const [x, y] = pet.getPosition(); const nx = x + (dx | 0), ny = y + (dy | 0); pet.setPosition(nx, ny); cfg.pet = { x: nx, y: ny }; saveCfg(); });
     ipcMain.handle('pet:stats', () => keyStats());
     ipcMain.handle('pet:setScale', (_e, k) => setPetScale(k));

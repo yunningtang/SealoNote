@@ -223,6 +223,10 @@ export function Seal({ ghost = false, standalone = false } = {}) {
   const big = !!mode;
   const setModeKeep = (m) => { if (standalone) return; setMode(m); try { localStorage.setItem('ytos.seal.mode', m); } catch {} };
   // 桌面版：「全屏」改成单独开一个汤圆窗口；网页版：弹一个小窗口
+  // 桌面版：同一时间只有一只汤圆。桌面汤圆出来了，窗口里这只就藏起来（对话照样能从顶栏 / 快捷键打开）
+  const deskPet = !standalone && !ghost && typeof window !== 'undefined' && window.sealonote && window.sealonote.pet && window.sealonote.pet.state ? window.sealonote.pet : null;
+  const [away, setAway] = useState(false);
+  useEffect(() => { if (!deskPet) return; deskPet.state().then((v) => setAway(!!(v && v.visible))).catch(() => {}); return deskPet.onState((v) => setAway(!!(v && v.visible))); }, []);
   const popOut = () => { if (window.sealonote && window.sealonote.showAI) window.sealonote.showAI(); else window.open(location.pathname + '#/seal', 'sealonote-ai', 'popup=yes,width=560,height=760'); setOpen(false); };
   // 尺寸按模式各记一份：浮窗一份、展开一份
   const [sizes, setSizes] = useState(() => { try { const v = JSON.parse(localStorage.getItem('ytos.seal.size2') || 'null'); if (v) return v; const old = JSON.parse(localStorage.getItem('ytos.seal.size') || 'null'); return old ? { float: old } : {}; } catch { return {}; } });
@@ -339,10 +343,14 @@ export function Seal({ ghost = false, standalone = false } = {}) {
       if (!dragging) return; const dx = e.clientX - sx0, dy = e.clientY - sy0;
       if (!moved && Math.hypot(dx, dy) > 5) moved = true; if (!moved) return;
       x = Math.min(Math.max(0, ox + dx), innerWidth - S); y = Math.min(Math.max(0, oy + dy), innerHeight - S);
+      if (deskPet) fab.classList.toggle('leaving', !!outside(e));
       vx = vx * .6 + (e.clientX - lastX) * .4; vy = vy * .6 + (e.clientY - lastY) * .4; lastX = e.clientX; lastY = e.clientY; place(); posPanel();
     };
-    const end = () => {
-      if (!dragging) return; dragging = false; fab.classList.remove('turning');
+    const outside = (e) => e && e.screenX != null && (e.screenX < window.screenX || e.screenX > window.screenX + window.outerWidth || e.screenY < window.screenY || e.screenY > window.screenY + window.outerHeight);
+    const end = (e) => {
+      if (!dragging) return; dragging = false; fab.classList.remove('turning', 'leaving');
+      // 桌面版：拖出窗口松手 = 变成桌面汤圆（窗口里这只随后藏起来）
+      if (moved && deskPet && deskPet.outAt && outside(e)) { deskPet.outAt(e.screenX, e.screenY); tx = innerWidth - S - M; ty = innerHeight - S - M - bottomPad(); x = tx; y = ty; perch = null; savePerch(); return; }
       if (moved) {
         svx = vx; svy = vy; sqv += .12;
         const under = document.elementsFromPoint(Math.max(0, Math.min(innerWidth - 1, x + S / 2)), Math.max(0, Math.min(innerHeight - 1, y + S - 6))).filter((e) => e !== fab && !fab.contains(e) && !panelRef.current?.contains(e));
@@ -366,6 +374,8 @@ export function Seal({ ghost = false, standalone = false } = {}) {
         { label: '新对话', icon: 'plus', onClick: () => { api.current.newThread && api.current.newThread(); setOpen(true); } },
         { label: '历史对话', icon: 'clock', onClick: () => { api.current.showHistory && api.current.showHistory(); setOpen(true); } },
         { label: openRef.current ? '关闭对话' : '打开对话', icon: 'maximize', onClick: () => setOpen((o) => !o) },
+        window.sealonote && window.sealonote.showAI && { label: '在单独的窗口里聊', icon: 'external', hint: 'Ctrl+Shift+Y', onClick: () => { setOpen(false); window.sealonote.showAI(); } },
+        deskPet && deskPet.outAt && { label: '放到桌面上', icon: 'right', hint: '或者直接拖出窗口', onClick: () => deskPet.outAt(window.screenX + window.outerWidth - 140, window.screenY + window.outerHeight - 60) },
         'sep',
         { label: tuckOn() ? '闲时贴边：开' : '闲时贴边：关', icon: 'right', hint: '没人理时缩到屏幕边上', onClick: () => update((d) => { d.settings.sealTuck = d.settings.sealTuck === false; }) },
         { label: '回到右下角', icon: 'refresh', hint: '从卡片上下来', onClick: () => api.current.reset() },
@@ -376,6 +386,7 @@ export function Seal({ ghost = false, standalone = false } = {}) {
     };
     fab.addEventListener('contextmenu', ctx);
     const resize = () => { if (perch) return; tx = (x + S / 2 < innerWidth / 2) ? M : innerWidth - S - M; ty = Math.min(Math.max(M, ty), innerHeight - S - M - bottomPad()); };
+    const offLanded = deskPet && deskPet.onLanded ? deskPet.onLanded((p) => { perch = null; savePerch(); tx = x = Math.min(Math.max(M, p.x - S / 2), innerWidth - S - M); ty = y = Math.min(Math.max(M, p.y - S / 2), innerHeight - S - M - bottomPad()); tucked = false; tuckK = 0; nearT = performance.now(); hopV = .09; flap = 1; happy = 1.2; place(); }) : null;
     fab.addEventListener('pointerdown', down); fab.addEventListener('pointermove', move); fab.addEventListener('pointerup', end); fab.addEventListener('pointercancel', end); fab.addEventListener('keydown', key);
     window.addEventListener('pointermove', look, { passive: true }); window.addEventListener('resize', resize);
 
@@ -468,7 +479,7 @@ export function Seal({ ghost = false, standalone = false } = {}) {
     return () => {
       dead = true; cancelAnimationFrame(raf); if (model) model.dispose();
       fab.removeEventListener('contextmenu', ctx); fab.removeEventListener('pointerdown', down); fab.removeEventListener('pointermove', move); fab.removeEventListener('pointerup', end); fab.removeEventListener('pointercancel', end); fab.removeEventListener('keydown', key);
-      window.removeEventListener('pointermove', look); window.removeEventListener('resize', resize); window.removeEventListener('hashchange', onRoute); clearTimeout(restoreT);
+      if (offLanded) offLanded(); window.removeEventListener('pointermove', look); window.removeEventListener('resize', resize); window.removeEventListener('hashchange', onRoute); clearTimeout(restoreT);
     };
   }, []);
 
@@ -798,7 +809,7 @@ export function Seal({ ghost = false, standalone = false } = {}) {
   </div>
   `;
   return html`
-    <button class="seal-fab" ref=${fabRef} aria-label="汤圆助手（可拖动）" aria-expanded=${open} title="汤圆：说一句话，帮你拆成待办 / 时间块 / 笔记">
+    <button class=${'seal-fab' + (away ? ' away' : '')} ref=${fabRef} aria-label="汤圆助手（可拖动）" aria-expanded=${open} title="汤圆：说一句话，帮你拆成待办 / 时间块 / 笔记">
       <canvas ref=${cvRef} width="300" height="300"></canvas>
       ${badge > 0 && !open && html`<span class="seal-badge">${badge}</span>`}
     </button>

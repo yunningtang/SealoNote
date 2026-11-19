@@ -3,7 +3,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('sealonote', {
   desktop: true,
-  version: 8,
+  version: 9,
   platform: process.platform,
   // 网页自己画的最小化 / 最大化 / 关闭
   win: {
@@ -30,6 +30,10 @@ contextBridge.exposeInMainWorld('sealonote', {
   pet: {
     show: () => ipcRenderer.invoke('pet:show'),
     hide: () => ipcRenderer.invoke('pet:hide'),
+    state: () => ipcRenderer.invoke('pet:state'),
+    onState: (cb) => { const h = (_e, v) => cb(v); ipcRenderer.on('pet:state', h); return () => ipcRenderer.removeListener('pet:state', h); },
+    outAt: (x, y) => ipcRenderer.invoke('pet:outAt', Math.round(Number(x) || 0), Math.round(Number(y) || 0)),
+    onLanded: (cb) => { const h = (_e, v) => cb(v); ipcRenderer.on('seal:landed', h); return () => ipcRenderer.removeListener('seal:landed', h); },
     menu: (st) => ipcRenderer.invoke('pet:menu', { size: Number(st && st.size) || 1, locked: !!(st && st.locked), counting: !!(st && st.counting) }),
     moveBy: (dx, dy) => ipcRenderer.send('pet:moveBy', Math.round(Number(dx) || 0), Math.round(Number(dy) || 0)),
     stats: () => ipcRenderer.invoke('pet:stats'),
