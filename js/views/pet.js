@@ -114,7 +114,7 @@ function dress(THREE, m, look) {
 }
 
 // 「定格画」：用 3D 模型拍几张姿势，拍完立刻释放 3D（同一时间只拍一组，拍过的记住）
-const framesCache = new Map(); let snapQ = Promise.resolve(null); const FRAME_V = 3;
+const framesCache = new Map(); let snapQ = Promise.resolve(null); const FRAME_V = 4;
 export const FALLBACK = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120"><path d="M16 96 C12 64 32 34 60 34 C88 34 108 64 104 96 C102 108 84 112 60 112 C36 112 18 108 16 96 Z" fill="#eef0f3" stroke="#d3d2cd" stroke-width="1.5"/><circle cx="44" cy="72" r="5" fill="#1f1e1c"/><circle cx="76" cy="72" r="5" fill="#1f1e1c"/></svg>');
 export function snapFrames(look) {
   const key = JSON.stringify(look); if (framesCache.has(key)) return Promise.resolve(framesCache.get(key));
@@ -131,9 +131,10 @@ export function snapFrames(look) {
       // 每张先画到 2D 画布上，最后按所有姿势合起来的范围把四周空白裁掉：气泡、计时就能贴着汤圆头顶（戴高帽子也一样）
       const pr = m.renderer.getPixelRatio(); const shots = {};
       const shot = (name) => { m.renderer.render(m.scene, m.camera); const c = document.createElement('canvas'); c.width = cv.width; c.height = cv.height; c.getContext('2d').drawImage(cv, 0, 0); shots[name] = c; };
+      // 拍鳍的两张：身体、头都不动（以前身体抬起来、头左右歪，两张来回换就像「闪现」），只有一边的鳍拍下去
       base(); shot('idle');
       base(); m.eyes.forEach((e) => { e.scale.y = .08; }); shot('blink');
-      for (const [name, sd] of [['left', -1], ['right', 1]]) { base(); m.rig.position.y = .05; m.headPiv.rotation.z = sd * .08; m.tailPiv.rotation.y = sd * .15; m.flips.forEach(({ piv, sx }) => { piv.rotation.z = sx * -.22 + (sx === sd ? sx * .9 : 0); }); shot(name); }
+      for (const [name, sd] of [['left', -1], ['right', 1]]) { base(); m.headPiv.rotation.z = sd * .015; m.tailPiv.rotation.y = sd * .06; m.flips.forEach(({ piv, sx }) => { piv.rotation.z = sx * -.22 + (sx === sd ? sx * .9 : 0); }); shot(name); }
       // 转头看左 / 看右：整只汤圆绕竖轴转一点，头跟着歪一下（真的 3D 角度，不是平移）
       for (const [name, sd] of [['lookL', -1], ['lookR', 1]]) { base(); m.seal.rotation.y = sd * .5; m.headPiv.rotation.z = -sd * .07; shot(name); m.seal.rotation.y = 0; }
       let x0 = 1e9, y0 = 1e9, x1 = -1, y1 = -1;
@@ -187,13 +188,14 @@ export default function Pet({ preview = false, bare = false }) {
   // 拍一下鳍：左右轮流换图（瞬间换，不淡入淡出——淡入要 0.16 秒，拍一下才 0.1 秒，以前就是这样「看不见在拍」），
   // 同时身体往下压一点再弹回来，像真的在拍桌子
   const sq = useRef(); const reduceMotion = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const lastFlap = useRef(0);
   const flap = () => {
     side.current = -side.current; setPose(side.current > 0 ? 'right' : 'left'); clearTimeout(poseT.current);
-    poseT.current = setTimeout(() => { poseT.current = 0; setPose('idle'); }, 110);
-    const el = sq.current; if (el && el.animate && !reduceMotion) el.animate([{ transform: 'none' }, { transform: `translateY(1.5px) scale(1.035,.955) rotate(${side.current * 1.6}deg)` }, { transform: 'none' }], { duration: 170, easing: 'cubic-bezier(.3,.7,.4,1)' });
+    poseT.current = setTimeout(() => { poseT.current = 0; setPose('idle'); }, 130);
+    const el = sq.current; if (el && el.animate && !reduceMotion) el.animate([{ transform: 'none' }, { transform: 'translateY(.6px) scale(1.012,.988)' }, { transform: 'none' }], { duration: 200, easing: 'ease-out' });
   };
-  // 一批按键（主进程每 0.15 秒汇总一次）按了几下就拍几下，均匀摊开，不再是一顿一顿的
-  const flapN = (n) => { const k = Math.max(1, Math.min(3, n || 1)); for (let i = 0; i < k; i++) setTimeout(flap, i * 85); };
+  // 一批按键（主进程每 0.15 秒汇总一次）：最多拍两下，两下之间至少隔 0.16 秒——打得再快也是一下一下地拍，不会抖成一片
+  const flapN = (n) => { const k = Math.max(1, Math.min(2, n || 1)); for (let i = 0; i < k; i++) setTimeout(() => { const t = performance.now(); if (t - lastFlap.current < 160) return; lastFlap.current = t; flap(); }, i * 170); };
   const [tilt, setTilt] = useState(0); const [hop, setHop] = useState(0);
 
   // ---- 打字：数字最多每 0.4 秒刷新一次；停下来 4 秒后数字淡下去
@@ -259,19 +261,19 @@ export default function Pet({ preview = false, bare = false }) {
     }
   };
   useEffect(() => { if (offRef.current.l || offRef.current.r) fitInside(); });
-  // 贴着任务栏：下面的「今天 N 下」会落到屏幕外，挪到头顶上（悬停时顶上是按钮条，那时就不显示计数）
+  // 贴着任务栏：下面的「今天 N 下」会落到屏幕外
   const [lowEdge, setLowEdge] = useState(false);
   useEffect(() => { if (!desk || !desk.onOff) return; return desk.onOff(({ l, r, b }) => {
     const el = box.current; if (!el) return; offRef.current = { l: l || 0, r: r || 0 }; fitInside();
-    const pill = el.querySelector('.pet-count'), img = el.querySelector('.pet-doll img'), f = bodyBox.current; let cy = 0;
-    if (b > 0 && pill && img && f) { const p = pill.getBoundingClientRect(), ir = img.getBoundingClientRect(); cy = Math.round(ir.top + f.t * ir.height - 6 - p.bottom); }
-    el.style.setProperty('--cy', cy + 'px'); setLowEdge(cy < 0);
+    setLowEdge((b || 0) > 0); // 贴着任务栏：下面那行计数会落到屏幕外，就不显示（以前挪到头顶上，会和番茄钟叠在一起）
   }); }, []);
   useEffect(() => { if (!desk || !desk.body || !box.current) return; const ro = new ResizeObserver(() => requestAnimationFrame(sendBody)); ro.observe(box.current); return () => ro.disconnect(); }, []);
 
   // ---- 每台电脑自己记：大小、固定位置、房间
   const ls = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch { return d; } };
   const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
+  // 汤圆下面那行「今天 N 下」：默认不显示（数还是照数，右键「打字统计」里看）；想看就在右键菜单里打开
+  const [showCount, setShowCountS] = useState(() => ls('ytos.pet.showCount', false)); const setShowCount = (v) => { setShowCountS(v); lsSet('ytos.pet.showCount', v); };
   const [size, setSizeS] = useState(() => ls('ytos.pet.size', 1)); const [locked, setLockedS] = useState(() => ls('ytos.pet.locked', false));
   const canSize = !!(desk && desk.setScale);
   const roomOn = false; // 小屋已经去掉了
@@ -333,11 +335,12 @@ export default function Pet({ preview = false, bare = false }) {
   const counting = !!desk && keys.on !== false && !keys.needsPermission;
   const more = async () => {
     if (!(desk && desk.menu)) { setPanel((x) => !x); return; }
-    const id = await desk.menu({ size, locked, counting });
+    const id = await desk.menu({ size, locked, counting, showCount });
     if (id === 'dress') openMain('#/settings?sec=seal');
     else if (id && id.startsWith('size:')) setSize(+id.slice(5));
     else if (id === 'lock') toggleLock();
     else if (id === 'count') toggleCount();
+    else if (id === 'showcount') setShowCount(!showCount);
     else if (id === 'hide') desk.hide();
   };
   const btn = (icon, title, fn, on, short) => html`<button type="button" class=${'pb' + (on ? ' on' : '')} data-l=${short || title} aria-label=${title} onClick=${(e) => { e.stopPropagation(); fn(); }}><${Icon} name=${icon} size=${15} /></button>`;
@@ -367,6 +370,6 @@ export default function Pet({ preview = false, bare = false }) {
     </div>`}
     <div class="pet-top">${top}</div>
     <div class="pet-stage">${doll}</div>
-    ${desk && html`<div class=${'pet-count' + ((lowEdge ? typing && !hover : typing || hover) ? ' on' : '')} title="只数按了几下，不记录按了什么">${keys.running || keys.today ? html`今天 <b>${(keys.today || 0).toLocaleString()}</b> 下` : keys.needsPermission ? '点「更多」开启打字计数' : ''}</div>`}
+    ${desk && showCount && !lowEdge && html`<div class=${'pet-count' + (typing || hover ? ' on' : '')} title="只数按了几下，不记录按了什么">${keys.running || keys.today ? html`今天 <b>${(keys.today || 0).toLocaleString()}</b> 下` : keys.needsPermission ? '点「更多」开启打字计数' : ''}</div>`}
   </div>`;
 }

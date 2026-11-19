@@ -5688,7 +5688,6 @@ html[data-theme="dark"] .br-in-acts button:hover{background:color-mix(in srgb,va
 .sk-todos .fd-add>button,.sk-todos .fd-add .ibtn{width:30px;height:30px;min-height:0;flex:none}
 /* 桌面汤圆贴着屏幕边时，气泡往屏幕里挪；小尖角还对着汤圆 */
 .pet-bubble::after{left:calc(50% + var(--ax,0px))}
-.pet-count{position:relative;top:var(--cy,0px)}
 .pet-bar{position:relative}
 /* 专注页：一列、居中。计时器在最上面当主角，下面是「正在做 / 先选一件事」，再下面是今天和历史——不再左右两栏一高一矮 */
 @media (min-width:701px){

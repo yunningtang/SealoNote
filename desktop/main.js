@@ -328,6 +328,22 @@ function hidePet() { if (pet && !pet.isDestroyed()) pet.hide(); cfg.petOn = fals
 const day = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
 let worker = null, keysErr = '';
 function keyStats() { const k = cfg.keys || {}; const today = k[day()] || 0; const total = Object.values(k).reduce((a, b) => a + b, 0); return { today, total, on: cfg.countKeys !== false, running: !!worker, needsPermission: MAC && !systemPreferences.isTrustedAccessibilityClient(false), error: keysErr, wayland: WAYLAND }; }
+// 右键「打字统计」：今天 / 昨天 / 这 7 天 / 一共，再列出最近 7 天每天多少下（只是数字，不记录按了什么）
+function keyMenu() {
+  const k = cfg.keys || {}; const f = (n) => Number(n || 0).toLocaleString('zh-CN');
+  const dayAt = (i) => { const d = new Date(); d.setDate(d.getDate() - i); return [d, `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`]; };
+  const days = [0, 1, 2, 3, 4, 5, 6].map((i) => { const [d, key] = dayAt(i); return { i, d, n: k[key] || 0 }; });
+  const week = days.reduce((a, x) => a + x.n, 0), total = Object.values(k).reduce((a, b) => a + b, 0), max = Math.max(1, ...days.map((x) => x.n));
+  const wd = '日一二三四五六';
+  return [
+    { label: `今天　${f(days[0].n)} 下`, enabled: false },
+    { label: `昨天　${f(days[1].n)} 下`, enabled: false },
+    { label: `这 7 天　${f(week)} 下`, enabled: false },
+    { label: `一共　${f(total)} 下`, enabled: false },
+    { type: 'separator' },
+    ...days.map((x) => ({ label: `${x.i === 0 ? '今天' : x.i === 1 ? '昨天' : '周' + wd[x.d.getDay()]}　${'▇'.repeat(Math.round((x.n / max) * 8)) || '·'}　${f(x.n)}`, enabled: false })),
+  ];
+}
 function addKeys(n) {
   cfg.keys = cfg.keys || {}; const d = day(); cfg.keys[d] = (cfg.keys[d] || 0) + n;
   const ks = Object.keys(cfg.keys); if (ks.length > 400) cfg.keys = Object.fromEntries(ks.sort().slice(-400).map((k) => [k, cfg.keys[k]]));
@@ -469,7 +485,9 @@ else {
         { label: '换装…', click: pick('dress') },
         { label: '大小', submenu: sizes.map(([k, l]) => ({ label: l, type: 'radio', checked: Math.abs((Number(st.size) || 1) - k) < 0.05, click: pick('size:' + k) })) },
         { label: '固定在这里', type: 'checkbox', checked: !!st.locked, click: pick('lock') },
+        { label: '打字统计', submenu: keyMenu() },
         { label: '打字计数', type: 'checkbox', checked: !!st.counting, click: pick('count') },
+        { label: '在汤圆下面显示计数', type: 'checkbox', checked: !!st.showCount, enabled: !!st.counting, click: pick('showcount') },
         { type: 'separator' },
         { label: '收起汤圆', click: pick('hide') },
       ]);
