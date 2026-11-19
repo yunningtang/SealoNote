@@ -125,7 +125,7 @@ export default function TodayView({ route } = {}) {
     </div>
   </div>`}
   <div class="td" style=${`--cols:${n}`}>
-    <section class="td-list card">
+    <section class="td-list card" data-unplan="1">
       ${narrow && html`<div class="tdm-top">
         <button type="button" class="tdm-glass tdm-back" disabled=${day === today} onClick=${() => { setDay(today); setFrom(today); }}>回到今天</button>
         <div class="tdm-glass tdm-acts"><button type="button" aria-label="新建时间块" onClick=${() => setBlk({ date: day, start: '09:00', kind: '' })}><${Icon} name="plus" size=${20} /></button></div>
@@ -163,7 +163,7 @@ export default function TodayView({ route } = {}) {
         ${L.inbox.length > 0 && html`<${Section} title="收件箱 · 没定日期" n=${L.inbox.length} open=${open.inbox} onToggle=${() => tog('inbox')}>
           ${L.inbox.map((t) => html`<${Row} key=${t.id} t=${t} onEdit=${setTEdit} />`)}
         <//>`}
-        <p class="td-tip"><${Icon} name="cursor" size=${11} />${narrow ? '把待办拖到下面的日历上就排好时间了' : '把待办拖到右边的日历上就排好时间了；日历里的块也能拖到别的天'}</p>
+        <p class="td-tip"><${Icon} name="cursor" size=${11} />${narrow ? '把待办拖到下面的日历上就排好时间了' : '把待办拖到右边的日历上就排好时间了；日历里的块能拖到别的天，拖回这里就从日历拿掉'}</p>
       </div>
     </section>
 

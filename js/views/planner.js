@@ -184,6 +184,20 @@ export function slotMenu(e, { date, min, onCreate }) {
   ], `${date === todayStr() ? '今天' : fmtShort(date)} ${t}`);
 }
 
+// 从日历上拿掉一个块：待办排出来的 → 待办回到「没排时间」；普通时间块 → 变成那天的一件待办。都可以撤销
+const b0of = (id) => get().blocks.find((x) => x.id === id);
+export function unplanBlock(b) {
+  if (!b) return;
+  const s = get();
+  if (b.todoId && s.todos.some((t) => t.id === b.todoId)) {
+    const all = s.blocks.filter((x) => x.todoId === b.todoId && x.date === b.date); const t = s.todos.find((x) => x.id === b.todoId); const oldTime = t.time || '';
+    all.forEach((x) => remove('blocks', x.id)); upsert('todos', { id: t.id, time: '' });
+    toast(`「${t.title}」放回待办了`, { label: '撤销', onClick: () => { all.forEach((x) => upsert('blocks', x)); upsert('todos', { id: t.id, time: oldTime }); } });
+  } else {
+    const id = uid(); upsert('todos', { id, title: b.title || '时间块', done: false, priority: 2, due: b.date, time: '', tags: [], area: '', note: b.note || '', created: todayStr() }); remove('blocks', b.id);
+    toast(`「${b.title || '时间块'}」变成了待办`, { label: '撤销', onClick: () => { remove('todos', id); upsert('blocks', b); } });
+  }
+}
 export function Timeline({ date, blocks: all, onEdit, onCreate, from = 0, to = 24, hourH = 52 }) {
   // 检查点单独画成一个点，不参与时间块的排列
   const blocks = useMemo(() => all.filter((b) => !isCheck(b)), [all]); const checks = useMemo(() => all.filter(isCheck), [all]);
@@ -204,7 +218,10 @@ export function Timeline({ date, blocks: all, onEdit, onCreate, from = 0, to = 2
         const el = document.elementFromPoint(e.clientX, e.clientY); const tl = el && el.closest('.tl[data-date]');
         const to = tl && tl.dataset.date !== date && tl.closest('.td-grid') ? tl : null;
         if (d.to !== to) { if (d.to) d.to.classList.remove('drop-over'); if (to) to.classList.add('drop-over'); d.to = to; }
-        if (to) dx = e.clientX - d.x0;
+        // 拖到「今天」页左边的待办上：松手就从日历拿掉
+        const un = !to && el && el.closest('[data-unplan]');
+        if (d.un !== un) { if (d.un) d.un.classList.remove('drop-unplan'); if (un) un.classList.add('drop-unplan'); d.un = un || null; }
+        if (to || un) dx = e.clientX - d.x0;
       }
       const dm = Math.round(((e.clientY - d.y0) / hourH) * 60 / SNAP) * SNAP;
       if (Math.abs(e.clientY - d.y0) > 3) d.moved = true;
@@ -216,6 +233,7 @@ export function Timeline({ date, blocks: all, onEdit, onCreate, from = 0, to = 2
     const onUp = () => {
       window.removeEventListener('pointermove', onMove); window.removeEventListener('pointerup', onUp);
       const d = dragRef.current; dragRef.current = null; const toDate = d && d.to ? d.to.dataset.date : ''; if (d && d.to) d.to.classList.remove('drop-over');
+      if (d && d.un) { d.un.classList.remove('drop-unplan'); setGhost(null); unplanBlock(b0of(d.id)); return; }
       setGhost((g) => { if (d && d.moved && g && g.id === d.id) upsert('blocks', { id: d.id, start: g.start, end: g.end, ...(toDate ? { date: toDate } : {}) }); else if (d && !d.moved && mode === 'move') onEdit && onEdit(b); return null; });
     };
     window.addEventListener('pointermove', onMove); window.addEventListener('pointerup', onUp);
