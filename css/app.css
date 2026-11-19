@@ -5410,14 +5410,14 @@ html[data-theme="dark"] .ms-seg button.on{background:#3A3A3E}
   html[data-theme="dark"] .modal{background:#1C1C1F!important}
   html[data-theme="dark"] .modal::before{background:rgba(235,235,245,.3)}
 }
-/* 手机：右键 / 长按菜单 = 从底部升起的操作面板 */
+/* 手机：右键 / 长按菜单 = 从底部升起的操作面板（桌面上的小窗口——便签、汤圆——窗口也窄，但还是普通的弹出菜单） */
 @media(max-width:720px){
-  .ctx.popmenu{left:8px!important;right:8px!important;top:auto!important;bottom:calc(8px + env(safe-area-inset-bottom))!important;width:auto!important;max-height:62vh!important;border-radius:26px!important;padding:6px 6px 8px!important;background:#F8F8FB!important;border:0!important;
+  html:not(.is-bare) .ctx.popmenu{left:8px!important;right:8px!important;top:auto!important;bottom:calc(8px + env(safe-area-inset-bottom))!important;width:auto!important;max-height:62vh!important;border-radius:26px!important;padding:6px 6px 8px!important;background:#F8F8FB!important;border:0!important;
     box-shadow:0 -4px 40px rgba(10,12,20,.18),0 0 0 100vmax rgba(10,12,20,.28)!important;animation:sheet .24s cubic-bezier(.2,.8,.2,1) both!important;scrollbar-width:none}
-  .ctx .pm{min-height:46px;font-size:16px;padding:0 14px;border-radius:14px;grid-template-columns:20px minmax(0,1fr) auto;gap:12px}
-  .ctx .pm .ic{width:18px;height:18px}
-  .ctx .pm-sec{padding:10px 14px 4px;font-size:13px}
-  html[data-theme="dark"] .ctx.popmenu{background:#1C1C1F!important}
+  html:not(.is-bare) .ctx .pm{min-height:46px;font-size:16px;padding:0 14px;border-radius:14px;grid-template-columns:20px minmax(0,1fr) auto;gap:12px}
+  html:not(.is-bare) .ctx .pm .ic{width:18px;height:18px}
+  html:not(.is-bare) .ctx .pm-sec{padding:10px 14px 4px;font-size:13px}
+  html[data-theme="dark"]:not(.is-bare) .ctx.popmenu{background:#1C1C1F!important}
 }
 /* 这台设备没在同步的提醒 */
 .sync-nudge{display:flex;align-items:center;gap:10px;margin:8px 0 10px;padding:9px 10px 9px 14px;border-radius:12px;background:color-mix(in srgb,#E8A23B 13%,var(--paper));border:1px solid color-mix(in srgb,#E8A23B 30%,transparent);font-size:.875rem;color:var(--text);animation:fi .3s ease-out both}
@@ -5656,7 +5656,8 @@ html[data-theme="dark"] .br-in-acts button:hover{background:color-mix(in srgb,va
 /* 桌面汤圆：头顶这一格按内容长高（两行的话不会被窗口裁掉）；跟着鼠标的 3D 倾斜；换姿势淡入淡出 */
 .pet-top{height:auto!important;min-height:36px}
 .pet-doll-w{transform:perspective(520px) rotateY(var(--ry,0deg)) rotateX(var(--rx,0deg)) rotate(var(--tilt,0deg));transition:transform .35s cubic-bezier(.2,.75,.25,1)}
-.pet-doll img{transition:opacity .16s ease-out}
+.pet-sq{position:absolute;inset:0;transform-origin:50% 92%}
+.pet-doll img{transition:none}.pet-doll.fade img{transition:opacity .14s ease-out}
 /* 便签「今天」：更紧凑、层级更清楚 —— 计时一行、日期做标题、焦点不再用蓝字、到期待办的时间放在右边同一行 */
 .sk-pane.today{gap:10px}
 .now-card{gap:8px;padding:10px 10px 10px 14px;border-radius:12px}
@@ -5689,3 +5690,59 @@ html[data-theme="dark"] .br-in-acts button:hover{background:color-mix(in srgb,va
 .pet-bubble::after{left:calc(50% + var(--ax,0px))}
 .pet-count{position:relative;top:var(--cy,0px)}
 .pet-bar{position:relative}
+/* 专注页：一列、居中。计时器在最上面当主角，下面是「正在做 / 先选一件事」，再下面是今天和历史——不再左右两栏一高一矮 */
+@media (min-width:701px){
+  .focus-page2{width:100%;max-width:680px;margin:0 auto}
+  .fp-battle-main,.focus-page2.quiet .fp-battle-main{grid-template-columns:minmax(0,1fr)!important;max-width:none;margin:0}
+  .fp-battle-main .fp-timer{order:-1}
+  .focus-page2.quiet{margin-top:4vh}
+}
+/* ===== 便签窗口 v2：一个列表 ===== */
+.sk-ttl{display:flex;align-items:baseline;gap:8px;padding-left:6px;min-width:0}
+.sk-ttl b{font-size:.9375rem;font-weight:700;color:var(--text)}
+.sk-ttl span{font-size:.75rem;color:var(--text-3);white-space:nowrap}
+.sk-new{display:inline-flex;align-items:center;gap:4px;height:26px;padding:0 10px 0 8px;margin-right:2px;border:0;border-radius:999px;background:color-mix(in srgb,#f5d76e 55%,transparent);color:#6b5513;font:inherit;font-size:.75rem;font-weight:650;cursor:pointer}
+.sk-new:hover{background:#f5d76e}
+html[data-theme="dark"] .sk-new{background:#5c5023;color:#f5e3a0}
+.sk-pane.today2{gap:8px}
+.sk-add2{display:flex;align-items:center;gap:8px;height:36px;padding:0 10px;border-radius:10px;background:var(--paper);box-shadow:0 0 0 1px var(--line);color:var(--text-4);transition:box-shadow .15s}
+.sk-add2:focus-within{box-shadow:0 0 0 1.5px var(--blue);color:var(--blue)}
+.sk-add2 input{flex:1;min-width:0;height:100%;border:0;outline:0;background:none;padding:0;font:inherit;font-size:.8125rem;color:var(--text);box-shadow:none}
+.sk-add2 input::placeholder{color:var(--text-4)}
+.sk-ls{display:flex;flex-direction:column}
+.sk-it{position:relative;display:flex;align-items:center;gap:9px;min-height:34px;padding:4px 6px;border-radius:8px;font-size:.8125rem;color:var(--text);transition:background .12s,opacity .3s}
+.sk-it:hover{background:var(--hover)}
+.sk-it .sk-ti{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.35}
+.sk-it .sk-at{flex:none;font-size:.6875rem;color:var(--text-3);font-variant-numeric:tabular-nums}
+.sk-cb{flex:none;width:16px;height:16px;padding:0;display:grid;place-items:center;border-radius:5px;border:1.6px solid var(--pc,var(--text-4));background:color-mix(in srgb,var(--pc,transparent) 12%,transparent);color:transparent;cursor:pointer;transition:background .15s,color .15s,transform .15s}
+.sk-cb:hover{color:var(--pc,var(--text-3))}
+.sk-it.done .sk-cb,.sk-it.checking .sk-cb{background:var(--pc,var(--text-3));color:#fff;transform:scale(1.08)}
+.sk-it.checking .sk-ti,.sk-it.done .sk-ti{text-decoration:line-through;color:var(--text-4)}
+.sk-it.checking{opacity:.55}
+.sk-ed{flex:1;min-width:0;height:24px;margin:-2px 0;padding:0 6px;border:0;border-radius:6px;font:inherit;font-size:.8125rem;background:var(--paper);box-shadow:0 0 0 1.5px var(--blue);outline:0}
+.sk-late{flex:none;font-style:normal;font-size:.6875rem;color:var(--red)}
+.sk-star{flex:none;width:22px;height:22px;margin:-3px -2px -3px 0;padding:0;display:grid;place-items:center;border:0;border-radius:6px;background:none;color:var(--text-4);cursor:pointer;opacity:0;transition:opacity .12s,color .12s}
+.sk-it:hover .sk-star{opacity:1}
+.sk-star:hover{color:#e0a400}
+.sk-star.on{opacity:1;color:#e0a400}
+.sk-star.on svg{fill:currentColor}
+.sk-sep{display:block;height:1px;margin:4px 6px;background:var(--line)}
+.sk-it.sk-bk{cursor:pointer;color:var(--text-2)}
+.sk-it.sk-bk .sk-dot{margin:0 4px 0 5px}
+.sk-it.sk-bk.cur{background:color-mix(in srgb,var(--bc) 12%,transparent);color:var(--text)}
+.sk-it.sk-bk.cur .sk-at{color:var(--bc);font-weight:600}
+.sk-it.sk-bk .sk-dia{margin:0 3px 0 4px}
+.sk-none{display:flex;flex-direction:column;align-items:center;gap:3px;margin:22px 0 6px;font-size:.8125rem;color:var(--text-3)}
+.sk-none b{font-weight:600;color:var(--text-2)}
+.sk-none span{font-size:.75rem;color:var(--text-4)}
+.sk-done{margin-top:2px;border-top:1px solid var(--line);padding-top:4px}
+.sk-fold{display:inline-flex;align-items:center;gap:5px;height:28px;padding:0 6px;border:0;border-radius:7px;background:none;font:inherit;font-size:.75rem;color:var(--text-3);cursor:pointer}
+.sk-fold:hover{background:var(--hover);color:var(--text-2)}
+/* 单张便利贴：顶上那行平时看不见，鼠标移上去才出来；左边一个小圆点换颜色 */
+.nv.single .nv-bar{border-bottom:0;background:transparent;opacity:0;transition:opacity .18s}
+.nv.single:hover .nv-bar,.nv.single:focus-within .nv-bar{opacity:1}
+.nv-dot{width:14px;height:14px;margin-left:4px;padding:0;border:0;border-radius:50%;background:var(--stk);box-shadow:inset 0 0 0 1.5px rgba(0,0,0,.18);cursor:pointer;-webkit-app-region:no-drag}
+.nv-dot:hover{transform:scale(1.15)}
+.sk-it.ck.due .sk-dia{background:var(--amber)}.sk-it.ck.ok .sk-dia{background:var(--green);border-color:var(--green)}.sk-it.ck.miss .sk-dia{background:var(--red);border-color:var(--red)}.sk-it.sk-bk .sk-dia{margin-top:0}
+.sk-it.sk-bk{padding-right:35px}
+.nv-dot{filter:brightness(.82) saturate(1.5)}

@@ -161,7 +161,7 @@ export function PomoCard({ full = false, initialTodo = '' }) {
   const prep = full && html`<div class="tt-prep">
     ${task ? html`<div class="tp-task"><span class="tp-k">现在做</span><b>${task.title}</b><button type="button" class="ibtn" title="不绑定待办" onClick=${() => { pomo.setLabel('', ''); pomo.setGoal(''); }}><${Icon} name="x" size=${13} /></button></div>
       ${(task.lastNote || nextStep(task)) && html`<div class="tp-resume">${task.lastNote && html`<span>上次停在：${task.lastNote}</span>`}${nextStep(task) && html`<span>下一步：${nextStep(task).title}</span>`}</div>`}`
-    : html`<input class="tt-label" type="text" value=${pst.label || ''} placeholder="这一轮推进什么？也可以从右边点一件待办" onInput=${(e) => pomo.setLabel(e.target.value, '')} onKeyDown=${(e) => { if (e.key === 'Enter') begin(); }} />`}
+    : html`<input class="tt-label" type="text" value=${pst.label || ''} placeholder="这一轮推进什么？也可以从下面点一件待办" onInput=${(e) => pomo.setLabel(e.target.value, '')} onKeyDown=${(e) => { if (e.key === 'Enter') begin(); }} />`}
     <input class="tt-label tt-goal" type="text" value=${pst.goal || ''} placeholder="这轮最小目标（可选）：比如先列三个要点" onInput=${(e) => pomo.setGoal(e.target.value)} onKeyDown=${(e) => { if (e.key === 'Enter') begin(); }} />
   </div>`;
   return html`<${Card} class=${'focus-w tt-card tc-' + tint + ' ' + pst.phase + (pst.paused ? ' paused' : '') + (full ? ' full' : '') + (rv && full ? ' reviewing' : '')} pad=${false}>

@@ -180,8 +180,20 @@ export default function Pet({ preview = false, bare = false }) {
     return () => { off && off(); clearTimeout(lookT.current); };
   }, []);
   // 显示哪一张：拍鳍 / 眨眼优先；转头的时候不眨眼（正脸闭眼会突然转回来）
+  // 转头（看左 / 看右 / 回正）才淡入淡出，眨眼和拍鳍都是瞬间换
+  const [fade, setFade] = useState(false); const gz0 = useRef('');
+  useEffect(() => { if (gz0.current === gaze) return; gz0.current = gaze; setFade(true); const t = setTimeout(() => setFade(false), 220); return () => clearTimeout(t); }, [gaze]);
   const shown = pose === 'idle' || pose === 'blink' ? (gaze && frames && frames[gaze] ? gaze : pose) : pose;
-  const flap = () => { side.current = -side.current; setPose(side.current > 0 ? 'right' : 'left'); clearTimeout(poseT.current); poseT.current = setTimeout(() => { poseT.current = 0; setPose('idle'); }, 120); };
+  // 拍一下鳍：左右轮流换图（瞬间换，不淡入淡出——淡入要 0.16 秒，拍一下才 0.1 秒，以前就是这样「看不见在拍」），
+  // 同时身体往下压一点再弹回来，像真的在拍桌子
+  const sq = useRef(); const reduceMotion = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const flap = () => {
+    side.current = -side.current; setPose(side.current > 0 ? 'right' : 'left'); clearTimeout(poseT.current);
+    poseT.current = setTimeout(() => { poseT.current = 0; setPose('idle'); }, 110);
+    const el = sq.current; if (el && el.animate && !reduceMotion) el.animate([{ transform: 'none' }, { transform: `translateY(1.5px) scale(1.035,.955) rotate(${side.current * 1.6}deg)` }, { transform: 'none' }], { duration: 170, easing: 'cubic-bezier(.3,.7,.4,1)' });
+  };
+  // 一批按键（主进程每 0.15 秒汇总一次）按了几下就拍几下，均匀摊开，不再是一顿一顿的
+  const flapN = (n) => { const k = Math.max(1, Math.min(3, n || 1)); for (let i = 0; i < k; i++) setTimeout(flap, i * 85); };
   const [tilt, setTilt] = useState(0); const [hop, setHop] = useState(0);
 
   // ---- 打字：数字最多每 0.4 秒刷新一次；停下来 4 秒后数字淡下去
@@ -189,7 +201,7 @@ export default function Pet({ preview = false, bare = false }) {
   useEffect(() => {
     if (!desk) return; desk.stats().then(setKeys).catch(() => {});
     let last = 0, pend = 0, idle = 0; const show = (v) => { last = performance.now(); setKeys((k) => ({ ...k, today: v.today, running: true })); };
-    return desk.onKey((v) => { flap(); setTyping(true); clearTimeout(idle); idle = setTimeout(() => setTyping(false), 4000); const now = performance.now(); clearTimeout(pend); if (now - last > 400) show(v); else pend = setTimeout(() => show(v), 400); });
+    return desk.onKey((v) => { flapN(v && v.n); setGaze(''); setTyping(true); clearTimeout(idle); idle = setTimeout(() => setTyping(false), 4000); const now = performance.now(); clearTimeout(pend); if (now - last > 400) show(v); else pend = setTimeout(() => show(v), 400); });
   }, []);
   useEffect(() => { if (desk || !preview) return; addEventListener('keydown', flap); return () => removeEventListener('keydown', flap); }, []);
 
@@ -309,9 +321,9 @@ export default function Pet({ preview = false, bare = false }) {
   // 第一次见面：告诉你可以怎么玩（只说一次）
   useEffect(() => { if (preview || bare || !frames || (() => { try { return JSON.parse(localStorage.getItem('ytos.pet.intro')); } catch { return false; } })()) return; lsSet('ytos.pet.intro', true); const t = setTimeout(() => say('点我看下一件事，拖我换地方\n往上一甩就打开便签', 8000), 600); return () => clearTimeout(t); }, [!!frames]);
   const pomoOn = st.phase !== 'idle'; const remain = pomoOn ? pomo.remaining() : 0; const total = (st.phase === 'break' ? st.breakLen : st.workLen) * 60; const frac = total ? Math.min(1, Math.max(0, 1 - remain / total)) : 0; const C = 2 * Math.PI * 9;
-  const doll = html`<div class="pet-doll-w" ref=${dollW} style=${`--tilt:${tilt}deg`}><div key=${hop} class=${'pet-doll' + (hop ? ' hop' : '')} style=${frames && frames.w ? `width:${frames.w}px;height:${frames.h}px;aspect-ratio:${frames.w}/${frames.h}` : 'width:150px;height:110px;aspect-ratio:150/110'}>
+  const doll = html`<div class="pet-doll-w" ref=${dollW} style=${`--tilt:${tilt}deg`}><div key=${hop} class=${'pet-doll' + (hop ? ' hop' : '') + (fade ? ' fade' : '')} style=${frames && frames.w ? `width:${frames.w}px;height:${frames.h}px;aspect-ratio:${frames.w}/${frames.h}` : 'width:150px;height:110px;aspect-ratio:150/110'}><div class="pet-sq" ref=${sq}>
     ${frames ? ['idle', 'blink', 'left', 'right', 'lookL', 'lookR'].filter((k) => frames[k]).map((k) => html`<img key=${k} src=${frames[k]} class=${shown === k ? 'on' : ''} alt="" draggable="false" />`) : html`<img src=${FALLBACK} class="on" alt="" draggable="false" />`}
-  </div></div>`;
+  </div></div></div>`;
   if (bare) return doll;
   if (preview) return html`<div class="pet preview"><div class="pet-bubble">${msg || '在下面给我换装吧'}</div><div class="pet-stage">${doll}</div></div>`;
 

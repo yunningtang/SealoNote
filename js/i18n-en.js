@@ -2221,7 +2221,7 @@ export const DICT = {
 "这一类先做": "Do this kind first",
 "这一轮": "This round",
 "这一轮做到什么就算完成？": "What counts as done for this round?",
-"这一轮推进什么？也可以从右边点一件待办": "What are you working on this round? Or pick a to-do on the right",
+"这一轮推进什么？也可以从下面点一件待办": "What are you working on this round? Or pick a to-do on the right",
 "这一轮结束了": "This round is over",
 "这一页在「最近删除」里，": "This page is in “Recently deleted”,",
 "这一页将无法恢复。": "This page can't be restored.",
