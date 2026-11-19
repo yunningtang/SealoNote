@@ -5606,3 +5606,23 @@ html[data-theme="dark"] .lk-new{background:#4a3218;color:#f2b36f}
   .td-ch{display:none}
   .td-cal.card{border-radius:22px;background:var(--paper)!important;box-shadow:none}
 }
+/* ---------- 侧栏笔记树：更紧凑、层级更清楚 ----------
+   本子（一级）：28 高，13px、中等字重、深一点的灰；页面（二级）：26 高，12.5px、浅一点的灰；
+   页面那一列左边一条很淡的竖线，缩进对齐到本子名字；折叠箭头平时不显示，鼠标移上去才出现 */
+.nav-tree{margin:2px 0 6px 4px;padding-left:4px}
+.nav-tree .pt-row{height:28px;min-height:0!important;padding:0 4px 0 2px}
+.nav-tree .pt-link{padding:0 2px;height:100%;gap:7px}
+.nav-tree .nb-row{margin-top:2px}
+.nav-tree .nb-row .pt-link{font-size:13px;font-weight:550;color:var(--text-2);letter-spacing:.01em}
+.nav-tree .nb-row:hover .pt-link{color:var(--text)}
+.nav-tree .nb-dot{width:8px;height:8px}
+.nav-tree .pt-tg{width:16px;height:16px;opacity:0;transition:opacity .12s}
+.nav-tree .pt-row:hover .pt-tg,.nav-tree .pt-tg:focus-visible{opacity:1}
+.nav-tree .pt-add{opacity:0}.nav-tree .pt-row:hover .pt-add{opacity:1}
+.nav-tree .nb-pages{position:relative;padding-left:22px;margin:1px 0 4px}
+.nav-tree .nb-pages::before{content:"";position:absolute;left:25px;top:3px;bottom:3px;width:1px;background:var(--line)}
+.nav-tree .nb-pages .pt-row{height:26px;font-size:12.5px;color:var(--text-3);padding-left:10px}
+.nav-tree .nb-pages .pt-row:hover{color:var(--text)}
+.nav-tree .nb-pages .pt-row.active{color:var(--text);font-weight:500;background:var(--hover)}
+.nav-tree .nb-pages .pt-row .pt-ic{width:13px;height:13px;opacity:.6}
+.nav-tree .nb-pages .ptree .ptree{padding-left:12px}
